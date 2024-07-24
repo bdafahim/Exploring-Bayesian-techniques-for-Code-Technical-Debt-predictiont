@@ -1,0 +1,35 @@
+Simulation,MSE,MAE,RMSE
+archiva,"0      Simulated_0
+1      Simulated_1
+2      Simulated_2
+3      Simulated_3
+4      Simulated_4
+          ...     
+95    Simulated_95
+96    Simulated_96
+97    Simulated_97
+98    Simulated_98
+99    Simulated_99
+Name: Simulation, Length: 100, dtype: object","0     4.803817e+09
+1     1.632948e+09
+2     3.156325e+09
+3     1.324336e+09
+4     4.333745e+08
+          ...     
+95    1.295066e+09
+96    3.653731e+09
+97    5.236576e+09
+98    3.727877e+09
+99    6.992939e+08
+Name: MSE, Length: 100, dtype: float64","0     69309.575315
+1     40409.752729
+2     56181.179405
+3     36391.426517
+4     20817.649056
+          ...     
+95    35987.030613
+96    60446.101220
+97    72364.190053
+98    61056.341289
+99    26444.166476
+Name: RMSE, Length: 100, dtype: float64"

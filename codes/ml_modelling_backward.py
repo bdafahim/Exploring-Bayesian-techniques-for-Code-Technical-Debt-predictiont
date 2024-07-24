@@ -133,11 +133,19 @@ def mlr_regression(training_df, testing_df, pro_name, periodicity):
     print(f"> Multiple Linear Regression for project {pro_name} - periodicity: [{periodicity}]")
     predictions = []
 
+    print('training_df Data head')
+    print(training_df.head())
+
+    print('testing_df Data head')
+    print(testing_df.head())
+    
     # preparing the data
     X_train = training_df.iloc[:, 1:].to_numpy()  # Independent variable
     y_train = training_df.iloc[:, 0].to_numpy()  # Dependent variable
     X_test = testing_df.iloc[:, 1:].to_numpy()
     y_test = testing_df.iloc[:, 0].to_numpy().astype(np.float64)
+
+
 
     # Standardizing the data
     scaler = StandardScaler()
@@ -397,7 +405,8 @@ def xgb_optimization(y_train, X_train, y_test, X_test):
 
     print(f"> Parameter optimization for MLR model completed - best vars: {len(best_variables)} | best AIC: {best_mae}")
     # Convert the index into the variable names from the original dataframe to store the variable names in a json file
-    best_var_names = [INITIAL_VARS[i] for i in best_variables]  # Adjusting for constant
+    valid_indices = [i for i in best_variables if i < len(INITIAL_VARS)]
+    best_var_names = [INITIAL_VARS[i] for i in valid_indices]  # Adjusting for constant
     return best_var_names, best_mae, best_variables
 
 
@@ -431,7 +440,8 @@ def rf_optimization(y_train, X_train, y_test, X_test):
 
     print(f"> Parameter optimization for RF model completed - best vars: {len(best_variables)} | best AIC: {best_mae}")
     # Convert the index into the variable names from the original dataframe to store the variable names in a json file
-    best_var_names = [INITIAL_VARS[i] for i in best_variables]
+    valid_indices = [i for i in best_variables if i < len(INITIAL_VARS)]
+    best_var_names = [INITIAL_VARS[i] for i in valid_indices]
     return best_var_names, best_mae, best_variables
 
 
@@ -464,7 +474,8 @@ def svr_optimization(y_train, X_train, y_test, X_test):
 
     print(f"> Parameter optimization for MLR model completed - best vars: {len(best_variables)} | best AIC: {best_mae}")
     # Convert the index into the variable names from the original dataframe to store the variable names in a json file
-    best_var_names = [INITIAL_VARS[i] for i in best_variables]
+    valid_indices = [i for i in best_variables if i < len(INITIAL_VARS)]
+    best_var_names = [INITIAL_VARS[i] for i in valid_indices]
     return best_var_names, best_mae, best_variables
 
 

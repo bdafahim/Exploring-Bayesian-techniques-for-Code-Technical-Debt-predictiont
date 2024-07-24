@@ -93,10 +93,13 @@ def backward_modelling(df, periodicity, seasonality, output_flag=True):
                 aic_with_regressor_removed = []
                 i = 0
                 for regressor in current_regressors:
+                    print(f">Regressor {regressor}")
                     try_regressors = current_regressors.copy()
                     try_regressors.remove(regressor)
                     tmp_X_try = training_df[try_regressors].to_numpy()
                     tmp_X_try_scaled = np.log1p(tmp_X_try)  # log scaling for highly skewed data
+                    print(f">Try Regressor {tmp_X_try}")
+                    print(f">Try Regressor scaled {tmp_X_try_scaled}")
 
                     try:
                         if seasonality:
@@ -235,6 +238,8 @@ def arimax_model(df_path, project_name, periodicity, seasonality):
     training_df = df.iloc[:split_point, :]
     testing_df = df.iloc[split_point:, :]
 
+    print(f'Backward modeleling started for project>>>>>--- {project_name}')
+
     # SARIMAX backward modelling
     best_model_params, best_aic, best_regressors, output_flag = backward_modelling(df=training_df,
                                                                                    periodicity=periodicity,
@@ -311,7 +316,8 @@ def ts_models(seasonality):
 
     assessment_statistics = ["PROJECT", "MAPE", "MSE", "MAE", "RMSE", "AIC", "BIC"]
     for i in range(len(biweekly_files)):
-
+        if biweekly_files[i] == '.DS_Store':
+            continue
         project = biweekly_files[i][:-4]
         monthly_results_path = os.path.join(output_path, "monthly_results", f"{project}.csv")
         biweekly_results_path = os.path.join(output_path, "biweekly_results", f"{project}.csv")

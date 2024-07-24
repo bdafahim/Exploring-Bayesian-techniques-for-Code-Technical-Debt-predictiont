@@ -18,7 +18,7 @@ def preprocessing():
     df['PROJECT'] = commits_df['PROJECT_ID']
     df['COMMIT'] = commits_df['REVISION']
     df['COMMIT_DATE'] = commits_df['COMMIT_DATE']
-    df['SQALE_INDEX'] = 0
+    df['SQALE_INDEX'] = commits_df['SQALE_INDEX']
     df.iloc[:, 4:] = 0
     print("> final dataframe structured. Starting preprocessing...")
 
@@ -33,7 +33,7 @@ def preprocessing():
         else:
             close_date = np.nan
 
-        for index_c in range(len(commits_df)):
+        for index_c in range(len(commits_df)):  
 
             # Get the row index of the commit in the df:
             idx = df.index[df["COMMIT"] == commits_df.iloc[index_c, 1]]

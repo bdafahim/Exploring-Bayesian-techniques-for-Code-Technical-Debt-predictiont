@@ -41,8 +41,16 @@ def featureImportance(MULTIVARIATE_PATH):
 
     # 3. IMPLEMENTING A RANDOM FOREST FOR FEATURE IMPORTANCE
     df = pd.read_csv(MULTIVARIATE_PATH)
+    print('overall dataframe head')
+    print(df.head())
+
     X = df.drop(columns=df.iloc[:, :4])
+    print('X dataframe head')
+    print(X.head())
+
     Y = df['SQALE_INDEX']
+    print('Y dataframe head')
+    print(Y.head())
 
     rf_model = RandomForestRegressor(n_estimators=500, criterion="squared_error", random_state=42)
     rf_model.fit(X, Y)
@@ -224,6 +232,17 @@ def data_prepare():
     zer_perc_df = zeroPercentage(os.path.join(DATA_PATH, 'raw-data', 'multivariate_data.csv'))
     feature_imp = featureImportance(os.path.join(DATA_PATH, 'raw-data', 'multivariate_data.csv'))
     correlation = correlationAnalysis(os.path.join(DATA_PATH, 'raw-data', 'multivariate_data.csv'))
+
+    print("Columns after variance thresholding:", var_df.shape)
+    print("Columns after zero percentage filter:", zer_perc_df.shape)
+    print("Columns after variance thresholding:", feature_imp.shape)
+    print("Columns after zero percentage filter:", correlation.shape)
+
+    print(var_df.head())
+    print(zer_perc_df.head())
+    print(feature_imp.head())
+    print(correlation.head())
+
 
     print(f"Length of Variance Thresolding predictors: {len(var_df)}")
     print(f"Length of Zero Percentage predictors: {len(zer_perc_df)}")

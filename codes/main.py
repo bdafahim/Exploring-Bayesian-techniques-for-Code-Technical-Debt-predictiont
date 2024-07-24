@@ -15,20 +15,26 @@ from ml_modelling_backward import ml_models
 from ts_modelling_speed import ts_models
 from related_work_speed import related_models
 from result_combiner import combine_results
-from commons import SARIMAX, RELATED_WORK, ML_MODELS, COMBINE_RESULTS, PREPROCESSING
+from ts_simulation import ts_simulation
+from ts_simulation_sarima import ts_simulation_seasonal
+from commons import SARIMAX, SIMULATION, SIMULATION_FUTURE_POINTS,  RELATED_WORK, ML_MODELS, COMBINE_RESULTS, PREPROCESSING
 
 
 def main():
 
     # Preprocess the data and generate the clean tables for analysis with biweekly, monthly and complete data
     if PREPROCESSING:
-        preprocessing()
+        #preprocessing()
         data_prepare()
 
     # SARIMAX modelling stage execution
     if SARIMAX:
         ts_models(seasonality=True)
         ts_models(seasonality=False)  # Replicated work
+    
+    if SIMULATION:
+        ts_simulation_seasonal(seasonality=True)
+    
 
     # SARIMA + LM related work stage execution
     '''if RELATED_WORK:
