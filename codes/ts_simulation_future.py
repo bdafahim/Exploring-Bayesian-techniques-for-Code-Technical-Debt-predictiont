@@ -168,7 +168,7 @@ def simulate_sqale_index_sarima(training_df, best_model_cfg, best_regressors, si
     return simulated_results
 
 
-def simulate_sqale_index_sarima_future_points(training_df, best_model_cfg, best_regressors, simulations=100, steps=10):
+def simulate_sqale_index_sarima_future_points(training_df, testing_df, best_model_cfg, best_regressors, simulations=50, steps=5):
     """
     Simulates the SQALE_INDEX based on the SARIMA model.
     
@@ -187,12 +187,33 @@ def simulate_sqale_index_sarima_future_points(training_df, best_model_cfg, best_
     X_train = training_df[best_regressors].astype(float)
     X_train_scaled = X_train.map(np.log1p)
 
+    # Prepare future exogenous values
+    future_exog = np.tile(X_train_scaled.iloc[-1], (steps, 1))
+
+
+    '''if testing_df.empty:
+        future_exog = np.tile(X_train_scaled.iloc[-1].values.reshape(1, -1), (steps, 1))
+    else:
+        # If testing_df provides future exogenous values, use them
+        future_exog = np.log1p(testing_df[best_regressors].iloc[:steps]).values'''
+
+     # Assuming you might use the last known exogenous values for future simulation steps
+    # If testing_df is not provided or is empty, use the last values from training_df
+    
+
     for i in range(simulations):
         try:
             model = SARIMAX(y_train, exog=X_train_scaled, order=arima_order, seasonal_order=seasonal_order,
                         enforce_stationarity=True, enforce_invertibility=True)
             fitted_model = model.fit(disp=False)
-            simulated_values = fitted_model.simulate(nsimulations=steps)
+
+            '''last_values = y_train.values[-1:]
+            simulated_values = fitted_model.simulate(nsimulations=steps, anchor='end', initial_state=fitted_model.predicted_state[:, -1], exog=future_exog)
+            simulated_values = last_values + np.cumsum(simulated_values)  # Accumulate the simulation to follow the trend
+            simulated_results.iloc[:, i] = simulated_values'''
+
+
+            simulated_values = fitted_model.simulate(nsimulations=steps, anchor='end', initial_state=fitted_model.predicted_state[:, -1], exog=future_exog)
             simulated_results.iloc[:, i] = simulated_values
             #simulated_results[f'Simulated_{i}'] = simulated_values
             print(f"> Simulation Values: index:{i} {simulated_values}")
@@ -203,8 +224,10 @@ def simulate_sqale_index_sarima_future_points(training_df, best_model_cfg, best_
             simulated_results[f'Simulated_{i}'] = np.nan
     
     # Extend the actual series to cover the training set and future steps
-    actual_values_extended = pd.concat([pd.Series(y_train.values), pd.Series([np.nan] * steps)], ignore_index=True)
-    actual_df = pd.DataFrame({'Actual': actual_values_extended}, index=range(len(actual_values_extended)))
+    # actual_values_extended = pd.concat([pd.Series(y_train.values), pd.Series([np.nan] * steps)], ignore_index=True)
+    # actual_df = pd.DataFrame({'Actual': actual_values_extended}, index=range(len(actual_values_extended)))
+
+    actual_df = pd.DataFrame({'Actual': y_train}, index=range(len(y_train)))
 
     return actual_df, simulated_results
 
@@ -301,9 +324,9 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality):
 
     if output_flag:
         if(seasonality):
-            actual_df, simulated_df = simulate_sqale_index_sarima_future_points(training_df, best_model_cfg, best_regressors)
+            actual_df, simulated_df = simulate_sqale_index_sarima_future_points(training_df, testing_df, best_model_cfg, best_regressors)
         else:
-            actual_df, simulated_df = simulate_sqale_index(training_df, best_model_cfg, best_regressors)
+            actual_df, simulated_df = simulate_sqale_index_sarima_future_points(training_df, best_model_cfg, best_regressors)
 
         # metrics_df = assess_simulations(simulated_df)
 
@@ -318,7 +341,7 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality):
         print(f"> Simulation results --- : {simulated_df}")
 
         # Plotting all simulations in a single graph
-        print(f"> Simulation results --- : {simulated_df}")
+        '''print(f"> Simulation results --- : {simulated_df}")
         plt.figure(figsize=(24, 6))
         plt.plot(actual_df.index, actual_df['Actual'], label='Actual', color='red')
         for column in simulated_df.columns:
@@ -326,7 +349,19 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality):
         plt.plot(simulated_df.index, simulated_df.mean(axis=1), label='Mean of Simulations', color='black', linewidth=2)
         plt.legend()
         plt.title('All Simulations for SQALE_INDEX')
+        plt.show()'''
+
+        # Plotting all simulations in a single graph
+        print(f"> Simulation results --- : {simulated_df}")
+        plt.figure(figsize=(12, 6))
+        plt.plot(actual_df.index, actual_df['Actual'], label='Actual', color='red')
+        for column in simulated_df.columns:
+            plt.plot(simulated_df.index, simulated_df[column], alpha=0.3)
+        plt.plot(simulated_df.index, simulated_df.mean(axis=1), label='Mean of Simulations', color='black', linewidth=2)
+        plt.legend()
+        plt.title('All Simulations for SQALE_INDEX')
         plt.show()
+
        # return [project_name, metrics_df['Simulation'], metrics_df['MSE'], metrics_df['RMSE']]
     else:
         print("Model fitting failed. Please check the data and parameters.")
