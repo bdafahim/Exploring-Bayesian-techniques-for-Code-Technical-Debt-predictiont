@@ -17,6 +17,7 @@ from related_work_speed import related_models
 from result_combiner import combine_results
 from ts_simulation import ts_simulation
 from ts_simulation_sarima import ts_simulation_seasonal
+from ts_simulation_future import ts_simulation_seasonal_f
 from commons import SARIMAX, SIMULATION, SIMULATION_FUTURE_POINTS,  RELATED_WORK, ML_MODELS, COMBINE_RESULTS, PREPROCESSING
 
 
@@ -33,7 +34,7 @@ def main():
         ts_models(seasonality=False)  # Replicated work
     
     if SIMULATION:
-        ts_simulation_seasonal(seasonality=True)
+        ts_simulation_seasonal_f(seasonality=True)
     
 
     # SARIMA + LM related work stage execution
