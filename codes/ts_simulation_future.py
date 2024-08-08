@@ -502,6 +502,7 @@ def save_and_plot_results(results, files, seasonality, closest_simulations, peri
 
 def assess_closest_simulations(results, files, seasonality, periodicity):
     closest_simulations = {}
+    step_ranks = {}
 
     for i in range(len(files)):
             if files[i] == '.DS_Store':
@@ -519,7 +520,9 @@ def assess_closest_simulations(results, files, seasonality, periodicity):
         
         # Ensure all directories exist
         output_folder = os.path.join(best_model_path, 'closest_sim', periodicity)
-        os.makedirs(output_folder, exist_ok=True)        
+        ranked_steps_output_folder = os.path.join(best_model_path, 'sim_windows_total_deviation', periodicity)
+        os.makedirs(output_folder, exist_ok=True)
+        os.makedirs(ranked_steps_output_folder, exist_ok=True)        
         
 
         # Ensure all data in simulated_df is numeric
@@ -549,8 +552,18 @@ def assess_closest_simulations(results, files, seasonality, periodicity):
 
         # print(f"Ranked simulations for {project} at {steps} steps: {ranked_simulations}")
 
+        # Sum the total deviations for this step and store it
+        step_ranks[steps] = total_deviation.sum()
+    
+    # Rank the steps based on the sum of their total deviations
+    ranked_steps = sorted(step_ranks.items(), key=lambda x: x[1])
+    ranked_steps_df = pd.DataFrame(ranked_steps, columns=['Steps', 'Total Deviation'])
+    ranked_steps_df.to_csv(os.path.join(ranked_steps_output_folder, f"{project}_simulation_windows_deviation.csv"), index=False)
 
-    return closest_simulations
+    print(f"Ranked steps for {project}: {ranked_steps}")
+
+
+    return closest_simulations, ranked_steps
 
 def ts_simulation_seasonal_f(seasonality):
     """
@@ -616,8 +629,6 @@ def ts_simulation_seasonal_f(seasonality):
 
         save_and_plot_results(biweekly_statistics, biweekly_files, seasonality, closest_sim_biwwekly, periodicity="biweekly")
         save_and_plot_results(monthly_statistics, monthly_files, seasonality, closest_sim_monthly, periodicity="monthly")
-
-        
 
         if seasonality:
             print(f"> SARIMAX simulation for project <{project}> performed - {i+1}/{len(biweekly_files)}")
