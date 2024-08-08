@@ -247,24 +247,6 @@ def simulate_sqale_index_sarima_future_points(training_df, testing_df, best_mode
     return results
 
 
-def assess_simulations(simulated_df):
-    """
-    Assesses the simulations by comparing simulated SQALE_INDEX with the actual SQALE_INDEX.
-    
-    :param simulated_df: DataFrame containing actual and simulated SQALE_INDEX
-    :return: DataFrame with metrics for each simulation
-    """
-    metrics = []
-    
-    for column in simulated_df.columns:
-        if column != 'Actual':
-            mse_val = MSE(simulated_df['Actual'], simulated_df[column])
-            mae_val = MAE(simulated_df['Actual'], simulated_df[column])
-            rmse_val = RMSE(simulated_df['Actual'], simulated_df[column])
-            metrics.append([column, mse_val, mae_val, rmse_val])
-    
-    metrics_df = pd.DataFrame(metrics, columns=['Simulation', 'MSE', 'MAE', 'RMSE'])
-    return metrics_df
 
 def trigger_simulation(df_path, project_name, periodicity, seasonality,steps):
 
@@ -466,7 +448,7 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality,steps):
     
 
 
-def save_and_plot_results(results, files, seasonality, periodicity):
+def save_and_plot_results(results, files, seasonality, closest_simulations, periodicity):
             
         '''print(f"> Simulation results --- : {simulated_df}")
         plt.figure(figsize=(12, 6))
@@ -508,11 +490,67 @@ def save_and_plot_results(results, files, seasonality, periodicity):
                 for column in simulated_df.columns:
                     plt.plot(simulated_df.index, simulated_df[column], alpha=0.3)
                 plt.plot(simulated_df.index, simulated_df.mean(axis=1), label='Mean of Simulations', color='black', linewidth=2)
+
+                '''for simulation in closest_simulations[steps]:
+                    plt.plot(simulated_df.index, simulated_df[simulation], alpha=0.3, label=f'Closest Simulation {simulation}')'''
+
                 plt.legend()
                 plt.title(f'All Simulations for SQALE_INDEX (Steps = {steps})')
                 plt.savefig(os.path.join(plots_folder, f"{project}_simulations_steps_{steps}.png"))
                 plt.close()
                 #plt.show()
+
+def assess_closest_simulations(results, files, seasonality, periodicity):
+    closest_simulations = {}
+
+    for i in range(len(files)):
+            if files[i] == '.DS_Store':
+                continue
+
+            project = files[i][:-4]
+
+    for steps, (actual_df, simulated_df) in results.items():
+
+
+        if seasonality:
+            best_model_path = os.path.join(DATA_PATH, "sarimax_simulations_output", f"{project}")
+        else:
+            best_model_path = os.path.join(DATA_PATH, "arimax_simulations_output", f"{project}")
+        
+        # Ensure all directories exist
+        output_folder = os.path.join(best_model_path, 'closest_sim', periodicity)
+        os.makedirs(output_folder, exist_ok=True)        
+        
+
+        # Ensure all data in simulated_df is numeric
+        simulated_df = simulated_df.apply(pd.to_numeric, errors='coerce')
+
+        # Fill NaN values with a high number to avoid them being closest by mistake
+        simulated_df = simulated_df.fillna(np.inf)
+        # Calculate the mean of simulations for each time step
+        mean_simulation = simulated_df.mean(axis=1)
+
+        # Compute the absolute deviation of each simulation from the mean
+        deviations = simulated_df.sub(mean_simulation, axis=0).abs()
+
+        # Sum the deviations for each simulation to get an overall deviation measure
+        total_deviation = deviations.sum()
+        
+
+        # Identify the simulations with the smallest total deviations
+        # Rank the simulations based on the total deviation
+        ranked_simulations = total_deviation.sort_values().index.tolist()
+        closest_simulations[steps] = ranked_simulations
+
+        # Save the closest simulations
+        closest_sim_df = simulated_df[ranked_simulations]
+        combined_df = pd.concat([actual_df, mean_simulation.rename('Mean_Simulation'), closest_sim_df], axis=1)
+        combined_df.to_csv(os.path.join(output_folder, f"{project}_closest_simulations_steps_{steps}.csv"))
+
+        # print(f"Ranked simulations for {project} at {steps} steps: {ranked_simulations}")
+
+
+    return closest_simulations
 
 def ts_simulation_seasonal_f(seasonality):
     """
@@ -571,10 +609,15 @@ def ts_simulation_seasonal_f(seasonality):
                                           seasonality=seasonality, steps=[1,3,6,12])
 
         # monthly_assessment.loc[len(monthly_assessment)] = monthly_statistics
-        # monthly_assessment.to_csv(monthly_results_path, index=False)
+        # monthly_assessment.to_csv(monthly_results_path, index=False
 
-        save_and_plot_results(biweekly_statistics, biweekly_files, seasonality, periodicity="biweekly")
-        save_and_plot_results(monthly_statistics, biweekly_files, seasonality, periodicity="monthly")
+        closest_sim_biwwekly = assess_closest_simulations(biweekly_statistics, biweekly_files, seasonality, periodicity="biweekly")
+        closest_sim_monthly = assess_closest_simulations(monthly_statistics, monthly_files, seasonality, periodicity="monthly")
+
+        save_and_plot_results(biweekly_statistics, biweekly_files, seasonality, closest_sim_biwwekly, periodicity="biweekly")
+        save_and_plot_results(monthly_statistics, monthly_files, seasonality, closest_sim_monthly, periodicity="monthly")
+
+        
 
         if seasonality:
             print(f"> SARIMAX simulation for project <{project}> performed - {i+1}/{len(biweekly_files)}")
