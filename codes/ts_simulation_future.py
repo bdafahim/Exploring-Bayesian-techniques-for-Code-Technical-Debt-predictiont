@@ -114,7 +114,7 @@ def backward_modelling(df, periodicity, seasonality, output_flag=True):
     return best_model_cfg, round(best_aic, 2), best_regressors, output_flag
 
 
-def simulate_sqale_index(training_df, best_model_cfg, best_regressors, simulations=100):
+def simulate_sqale_index_arima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps, simulations=50):
     """
     Simulates the SQALE_INDEX based on the ARIMA model.
     
@@ -123,52 +123,64 @@ def simulate_sqale_index(training_df, best_model_cfg, best_regressors, simulatio
     :param simulations: Number of simulations to perform
     :return: DataFrame with actual and simulated SQALE_INDEX
     """
-    y_train = training_df['SQALE_INDEX'].astype(float)
-    arima_order = best_model_cfg[0]
-    simulated_results = pd.DataFrame(index=training_df.index, columns=[f'Simulated_{i}' for i in range(simulations)])
-    X_train = training_df[best_regressors].astype(float)
-    X_train_scaled = X_train.map(np.log1p)
-
-    #ARIMAX
-    for i in range(simulations):
-        model = SARIMAX(y_train, exog=X_train_scaled, order=arima_order,
-                        enforce_stationarity=True, enforce_invertibility=True)
-        fitted_model = model.fit(disp=False)
-        simulated_values = fitted_model.simulate(len(training_df))
-        simulated_results[f'Simulated_{i}'] = simulated_values
-    
-    simulated_results['Actual'] = y_train
-    return simulated_results
-
-def simulate_sqale_index_sarima(training_df, best_model_cfg, best_regressors, simulations=100):
-    """
-    Simulates the SQALE_INDEX based on the ARIMA model.
-    
-    :param training_df: Training DataFrame with actual SQALE_INDEX and regressors
-    :param best_model_cfg: Best ARIMA model configuration obtained from backward_modelling
-    :param simulations: Number of simulations to perform
-    :return: DataFrame with actual and simulated SQALE_INDEX
-    """
+    results = {}
     y_train = training_df['SQALE_INDEX'].astype(float)
     arima_order = best_model_cfg[0]
     seasonal_order = best_model_cfg[1]
-    simulated_results = pd.DataFrame(index=training_df.index, columns=[f'Simulated_{i}' for i in range(simulations)])
     X_train = training_df[best_regressors].astype(float)
     X_train_scaled = X_train.map(np.log1p)
 
-    #SARIMAX
-    for i in range(simulations):
-        model = SARIMAX(y_train, exog=X_train_scaled, order=arima_order, seasonal_order=seasonal_order,
-                        enforce_stationarity=True, enforce_invertibility=True)
-        fitted_model = model.fit(disp=False)
-        simulated_values = fitted_model.simulate(len(training_df))
-        simulated_results[f'Simulated_{i}'] = simulated_values
+
+    for steps in steps:
+        simulation_index = range(len(training_df), len(training_df) + steps)
+        simulated_results = pd.DataFrame(index=simulation_index, 
+                                     columns=[f'Simulated_{i}' for i in range(simulations)])
+
+        # Prepare future exogenous values
+        #future_exog = np.tile(X_train_scaled.iloc[-1], (steps, 1))
+
+        if testing_df.empty:
+            print('testing_df is empty')
+            future_exog = np.tile(X_train_scaled.iloc[-1], (steps, 1))
+        else:
+            # If testing_df provides future exogenous values, use them
+            future_exog = np.log1p(testing_df[best_regressors].iloc[:steps]).values
+
+        # Assuming you might use the last known exogenous values for future simulation steps
+        # If testing_df is not provided or is empty, use the last values from training_df
+        
+
+        for i in range(simulations):
+            try:
+                model = SARIMAX(y_train, exog=X_train_scaled, order=arima_order,
+                            enforce_stationarity=True, enforce_invertibility=True)
+                fitted_model = model.fit(disp=False)
+
+                '''last_values = y_train.values[-1:]
+                simulated_values = fitted_model.simulate(nsimulations=steps, anchor='end', initial_state=fitted_model.predicted_state[:, -1], exog=future_exog)
+                simulated_values = last_values + np.cumsum(simulated_values)  # Accumulate the simulation to follow the trend
+                simulated_results.iloc[:, i] = simulated_values'''
+
+
+                simulated_values = fitted_model.simulate(nsimulations=steps, anchor='end', initial_state=fitted_model.predicted_state[:, -1], exog=future_exog)
+                simulated_results.iloc[:, i] = simulated_values
+                #simulated_results[f'Simulated_{i}'] = simulated_values
+                print(f"> Simulation Values: index:{i} {simulated_values}")
+                print(f"> Simulation results: {simulated_results[f'Simulated_{i}']}")
+        
+            except Exception as e:
+                print(f"> Error during simulation {i}: {str(e)}")
+                simulated_results[f'Simulated_{i}'] = np.nan
+
+        actual_df = pd.DataFrame({'Actual': y_train}, index=range(len(y_train)))
+        results[steps] = (actual_df, simulated_results)
     
-    simulated_results['Actual'] = y_train
-    return simulated_results
+    #actual_df = pd.DataFrame({'Actual': y_train}, index=range(len(y_train)))
+
+    return results
 
 
-def simulate_sqale_index_sarima_future_points(training_df, testing_df, best_model_cfg, best_regressors, simulations=50, steps=5):
+def simulate_sqale_index_sarima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps, simulations=50):
     """
     Simulates the SQALE_INDEX based on the SARIMA model.
     
@@ -178,58 +190,61 @@ def simulate_sqale_index_sarima_future_points(training_df, testing_df, best_mode
     :param steps: Number of steps to forecast beyond the training data length
     :return: DataFrame with actual and simulated SQALE_INDEX
     """
+    results = {}
     y_train = training_df['SQALE_INDEX'].astype(float)
     arima_order = best_model_cfg[0]
     seasonal_order = best_model_cfg[1]
-    simulation_index = range(len(training_df), len(training_df) + steps)
-    simulated_results = pd.DataFrame(index=simulation_index, 
-                                     columns=[f'Simulated_{i}' for i in range(simulations)])
     X_train = training_df[best_regressors].astype(float)
     X_train_scaled = X_train.map(np.log1p)
 
-    # Prepare future exogenous values
-    future_exog = np.tile(X_train_scaled.iloc[-1], (steps, 1))
+
+    for steps in steps:
+        simulation_index = range(len(training_df), len(training_df) + steps)
+        simulated_results = pd.DataFrame(index=simulation_index, 
+                                     columns=[f'Simulated_{i}' for i in range(simulations)])
+
+        # Prepare future exogenous values
+        #future_exog = np.tile(X_train_scaled.iloc[-1], (steps, 1))
+
+        if testing_df.empty:
+            print('testing_df is empty')
+            future_exog = np.tile(X_train_scaled.iloc[-1], (steps, 1))
+        else:
+            # If testing_df provides future exogenous values, use them
+            future_exog = np.log1p(testing_df[best_regressors].iloc[:steps]).values
+
+        # Assuming you might use the last known exogenous values for future simulation steps
+        # If testing_df is not provided or is empty, use the last values from training_df
+        
+
+        for i in range(simulations):
+            try:
+                model = SARIMAX(y_train, exog=X_train_scaled, order=arima_order, seasonal_order=seasonal_order,
+                            enforce_stationarity=True, enforce_invertibility=True)
+                fitted_model = model.fit(disp=False)
+
+                '''last_values = y_train.values[-1:]
+                simulated_values = fitted_model.simulate(nsimulations=steps, anchor='end', initial_state=fitted_model.predicted_state[:, -1], exog=future_exog)
+                simulated_values = last_values + np.cumsum(simulated_values)  # Accumulate the simulation to follow the trend
+                simulated_results.iloc[:, i] = simulated_values'''
 
 
-    '''if testing_df.empty:
-        future_exog = np.tile(X_train_scaled.iloc[-1].values.reshape(1, -1), (steps, 1))
-    else:
-        # If testing_df provides future exogenous values, use them
-        future_exog = np.log1p(testing_df[best_regressors].iloc[:steps]).values'''
+                simulated_values = fitted_model.simulate(nsimulations=steps, anchor='end', initial_state=fitted_model.predicted_state[:, -1], exog=future_exog)
+                simulated_results.iloc[:, i] = simulated_values
+                #simulated_results[f'Simulated_{i}'] = simulated_values
+                print(f"> Simulation Values: index:{i} {simulated_values}")
+                print(f"> Simulation results: {simulated_results[f'Simulated_{i}']}")
+        
+            except Exception as e:
+                print(f"> Error during simulation {i}: {str(e)}")
+                simulated_results[f'Simulated_{i}'] = np.nan
 
-     # Assuming you might use the last known exogenous values for future simulation steps
-    # If testing_df is not provided or is empty, use the last values from training_df
+        actual_df = pd.DataFrame({'Actual': y_train}, index=range(len(y_train)))
+        results[steps] = (actual_df, simulated_results)
     
+    #actual_df = pd.DataFrame({'Actual': y_train}, index=range(len(y_train)))
 
-    for i in range(simulations):
-        try:
-            model = SARIMAX(y_train, exog=X_train_scaled, order=arima_order, seasonal_order=seasonal_order,
-                        enforce_stationarity=True, enforce_invertibility=True)
-            fitted_model = model.fit(disp=False)
-
-            '''last_values = y_train.values[-1:]
-            simulated_values = fitted_model.simulate(nsimulations=steps, anchor='end', initial_state=fitted_model.predicted_state[:, -1], exog=future_exog)
-            simulated_values = last_values + np.cumsum(simulated_values)  # Accumulate the simulation to follow the trend
-            simulated_results.iloc[:, i] = simulated_values'''
-
-
-            simulated_values = fitted_model.simulate(nsimulations=steps, anchor='end', initial_state=fitted_model.predicted_state[:, -1], exog=future_exog)
-            simulated_results.iloc[:, i] = simulated_values
-            #simulated_results[f'Simulated_{i}'] = simulated_values
-            print(f"> Simulation Values: index:{i} {simulated_values}")
-            print(f"> Simulation results: {simulated_results[f'Simulated_{i}']}")
-    
-        except Exception as e:
-            print(f"> Error during simulation {i}: {str(e)}")
-            simulated_results[f'Simulated_{i}'] = np.nan
-    
-    # Extend the actual series to cover the training set and future steps
-    # actual_values_extended = pd.concat([pd.Series(y_train.values), pd.Series([np.nan] * steps)], ignore_index=True)
-    # actual_df = pd.DataFrame({'Actual': actual_values_extended}, index=range(len(actual_values_extended)))
-
-    actual_df = pd.DataFrame({'Actual': y_train}, index=range(len(y_train)))
-
-    return actual_df, simulated_results
+    return results
 
 
 def assess_simulations(simulated_df):
@@ -251,17 +266,25 @@ def assess_simulations(simulated_df):
     metrics_df = pd.DataFrame(metrics, columns=['Simulation', 'MSE', 'MAE', 'RMSE'])
     return metrics_df
 
-def trigger_simulation(df_path, project_name, periodicity, seasonality):
+def trigger_simulation(df_path, project_name, periodicity, seasonality,steps):
 
     # DATA PREPARATION (Splitting)
-    encoding = check_encoding(df_path)
+    '''encoding = check_encoding(df_path)
     df = pd.read_csv(df_path, encoding=encoding)
     df.COMMIT_DATE = pd.to_datetime(df.COMMIT_DATE)
     sqale_index = df.SQALE_INDEX.to_numpy()  # Dependent variable
     split_point = round(len(sqale_index)*0.8)  # Initial data splitting. (80% training 20% testing)
     training_df = df.iloc[:split_point, :]
-    testing_df = df.iloc[split_point:, :]
+    testing_df = df.iloc[split_point:, :]'''
     # Assuming training_df is already loaded and prepared
+
+    encoding = check_encoding(df_path)
+    training_df = pd.read_csv(df_path, encoding=encoding)
+    training_df.COMMIT_DATE = pd.to_datetime(training_df.COMMIT_DATE)
+    sqale_index = training_df.SQALE_INDEX.to_numpy()  # Dependent variable
+    split_point = round(len(sqale_index)*0.8)  # Initial data splitting. (80% training 20% testing)
+    #training_df = df.iloc[:split_point, :]
+    testing_df = pd.DataFrame()
 
     print(f'Backward modeleling started for project>>>>>--- {project_name}')
 
@@ -269,49 +292,103 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality):
         df=training_df, periodicity=periodicity, seasonality=seasonality
     )'''
 
-    output_flag = True
+    if(project_name == 'archiva'):
+        output_flag = True
 
-    if(periodicity == 'biweekly'):
-        best_model_cfg = [[
-            0,
-            1,
-            1
-        ],
-        [
-            0,
-            0,
-            0,
-            26
-        ]]
-        best_aic = 1606.92
-        best_regressors = ["S00117","S00108"]
+        if(periodicity == 'biweekly'):
+            best_model_cfg = [[
+                0,
+                1,
+                1
+            ],
+            [
+                0,
+                0,
+                0,
+                26
+            ]]
+            best_aic = 1606.92
+            best_regressors = ["S00117","S00108"]
+        else:
+            best_model_cfg = [[
+                0,
+                1,
+                0
+            ],
+            [
+                0,
+                0,
+                0,
+                12
+            ]]
+        best_aic = 812.77
+        best_regressors = ["RedundantThrowsDeclarationCheck",
+            "S1488",
+            "S1905",
+            "UselessImportCheck",
+            "S00108"]
+        
+    elif(project_name == 'httpcore'):
+        output_flag = True
+
+        if(periodicity == 'biweekly'):
+            best_model_cfg = [[
+                0,
+                1,
+                0
+            ],
+            [
+                0,
+                0,
+                0,
+                26
+            ]]
+            best_aic = 2931.39
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S1488",
+                "S1905",
+                "DuplicatedBlocks",
+                "S1226",
+                "S00112",
+                "S1151"
+        ]
+        else:
+            best_model_cfg = [[
+                0,
+                1,
+                0
+            ],
+            [
+                0,
+                0,
+                0,
+                12
+            ]]
+        best_aic = 1385.29
+        best_regressors = [
+            "RedundantThrowsDeclarationCheck",
+            "S00117",
+            "S1488",
+            "DuplicatedBlocks",
+            "S00112"
+        ]
     else:
-        best_model_cfg = [[
-            0,
-            1,
-            0
-        ],
-        [
-            0,
-            0,
-            0,
-            12
-        ]]
-    best_aic = 812.77
-    best_regressors = ["RedundantThrowsDeclarationCheck",
-        "S1488",
-        "S1905",
-        "UselessImportCheck",
-        "S00108"]
+        best_model_cfg, best_aic, best_regressors, output_flag = backward_modelling(
+        df=training_df, periodicity=periodicity, seasonality=seasonality
+    )
+
+
 
     if seasonality:
-        best_model_path = os.path.join(DATA_PATH, "best_sarimax_simulations")
+        best_model_path = os.path.join(DATA_PATH, "best_sarimax_simulations_models")
         if not os.path.exists(best_model_path):
             os.mkdir(best_model_path)
             os.mkdir(os.path.join(best_model_path, "biweekly"))
             os.mkdir(os.path.join(best_model_path, "monthly"))
     else:
-        best_model_path = os.path.join(DATA_PATH, "best_arimax_simulations")
+        best_model_path = os.path.join(DATA_PATH, "best_arimax_simulations_models")
         if not os.path.exists(best_model_path):
             os.mkdir(best_model_path)
             os.mkdir(os.path.join(best_model_path, "biweekly"))
@@ -324,9 +401,12 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality):
 
     if output_flag:
         if(seasonality):
-            actual_df, simulated_df = simulate_sqale_index_sarima_future_points(training_df, testing_df, best_model_cfg, best_regressors)
+            results = simulate_sqale_index_sarima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps)
         else:
-            actual_df, simulated_df = simulate_sqale_index_sarima_future_points(training_df, best_model_cfg, best_regressors)
+            results = simulate_sqale_index_arima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps)
+
+        
+        return results
 
         # metrics_df = assess_simulations(simulated_df)
 
@@ -338,11 +418,12 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality):
             print(f"  MSE: {row['MSE']}")
             print(f"  RMSE: {row['RMSE']}\n")'''
 
-        print(f"> Simulation results --- : {simulated_df}")
+        #print(f"> Simulation results --- : {simulated_df}")
+     
 
         # Plotting all simulations in a single graph
         '''print(f"> Simulation results --- : {simulated_df}")
-        plt.figure(figsize=(24, 6))
+        plt.figure(figsize=(12, 6))
         plt.plot(actual_df.index, actual_df['Actual'], label='Actual', color='red')
         for column in simulated_df.columns:
             plt.plot(simulated_df.index, simulated_df[column], alpha=0.3)
@@ -351,8 +432,43 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality):
         plt.title('All Simulations for SQALE_INDEX')
         plt.show()'''
 
-        # Plotting all simulations in a single graph
-        print(f"> Simulation results --- : {simulated_df}")
+        for steps, (actual_df, simulated_df) in results.items():
+
+            # Save to CSV
+            if seasonality:
+                best_model_path = os.path.join(DATA_PATH, "best_sarimax_simulations_output")
+            else:
+                best_model_path = os.path.join(DATA_PATH, "best_arimax_simulations_output")
+    
+            if not os.path.exists(best_model_path):
+                os.mkdir(best_model_path)
+            if not os.path.exists(os.path.join(best_model_path, "biweekly")):
+                os.mkdir(os.path.join(best_model_path, "biweekly"))
+            if not os.path.exists(os.path.join(best_model_path, "monthly")):
+                os.mkdir(os.path.join(best_model_path, "monthly"))
+
+            combined_df = pd.concat([actual_df, simulated_df], axis=1)
+            output_folder = os.path.join(best_model_path, periodicity)
+            combined_df.to_csv(os.path.join(output_folder, f"{project_name}_simulations_steps_{steps}.csv"))
+
+            plt.figure(figsize=(12, 6))
+            plt.plot(actual_df.index, actual_df['Actual'], label='Actual', color='red')
+            for column in simulated_df.columns:
+                plt.plot(simulated_df.index, simulated_df[column], alpha=0.3)
+            plt.plot(simulated_df.index, simulated_df.mean(axis=1), label='Mean of Simulations', color='black', linewidth=2)
+            plt.legend()
+            plt.title(f'All Simulations for SQALE_INDEX (Steps = {steps})')
+            plt.show()
+
+       # return [project_name, metrics_df['Simulation'], metrics_df['MSE'], metrics_df['RMSE']]
+    else:
+        print("Model fitting failed. Please check the data and parameters.")
+    
+
+
+def save_and_plot_results(results, files, seasonality, periodicity):
+            
+        '''print(f"> Simulation results --- : {simulated_df}")
         plt.figure(figsize=(12, 6))
         plt.plot(actual_df.index, actual_df['Actual'], label='Actual', color='red')
         for column in simulated_df.columns:
@@ -360,12 +476,43 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality):
         plt.plot(simulated_df.index, simulated_df.mean(axis=1), label='Mean of Simulations', color='black', linewidth=2)
         plt.legend()
         plt.title('All Simulations for SQALE_INDEX')
-        plt.show()
+        plt.show()'''
 
-       # return [project_name, metrics_df['Simulation'], metrics_df['MSE'], metrics_df['RMSE']]
-    else:
-        print("Model fitting failed. Please check the data and parameters.")
-    
+        for i in range(len(files)):
+            if files[i] == '.DS_Store':
+                continue
+
+            project = files[i][:-4]
+
+            for steps, (actual_df, simulated_df) in results.items():
+
+                # Save to CSV
+                if seasonality:
+                    best_model_path = os.path.join(DATA_PATH, "sarimax_simulations_output", f"{project}")
+                else:
+                    best_model_path = os.path.join(DATA_PATH, "arimax_simulations_output", f"{project}")
+        
+                # Ensure all directories exist
+                output_folder = os.path.join(best_model_path, 'results', periodicity)
+                plots_folder = os.path.join(best_model_path, 'plots', periodicity)
+
+                os.makedirs(output_folder, exist_ok=True)
+                os.makedirs(plots_folder, exist_ok=True)
+
+                combined_df = pd.concat([actual_df, simulated_df], axis=1)
+                combined_df.to_csv(os.path.join(output_folder, f"{project}_simulations_steps_{steps}.csv"))
+
+
+                plt.figure(figsize=(12, 6))
+                plt.plot(actual_df.index, actual_df['Actual'], label='Actual', color='red')
+                for column in simulated_df.columns:
+                    plt.plot(simulated_df.index, simulated_df[column], alpha=0.3)
+                plt.plot(simulated_df.index, simulated_df.mean(axis=1), label='Mean of Simulations', color='black', linewidth=2)
+                plt.legend()
+                plt.title(f'All Simulations for SQALE_INDEX (Steps = {steps})')
+                plt.savefig(os.path.join(plots_folder, f"{project}_simulations_steps_{steps}.png"))
+                plt.close()
+                #plt.show()
 
 def ts_simulation_seasonal_f(seasonality):
     """
@@ -398,6 +545,7 @@ def ts_simulation_seasonal_f(seasonality):
         monthly_results_path = os.path.join(output_path, "monthly_results", f"{project}.csv")
         biweekly_results_path = os.path.join(output_path, "biweekly_results", f"{project}.csv")
 
+
         biweekly_assessment = pd.DataFrame(columns=assessment_statistics)
         monthly_assessment = pd.DataFrame(columns=assessment_statistics)
 
@@ -408,11 +556,11 @@ def ts_simulation_seasonal_f(seasonality):
             continue
 
         # Runs the SARIMAX execution for the given project in biweekly format
-        print(f">   {project} for biweekly data")
+        print(f"> Processing {project} for biweekly data")
         biweekly_statistics = trigger_simulation(df_path=os.path.join(biweekly_data_path, biweekly_files[i]),
                                            project_name=project,
                                            periodicity="biweekly",
-                                           seasonality=seasonality)
+                                           seasonality=seasonality, steps=[1,2,6,12,24])
 
         # biweekly_assessment.loc[len(biweekly_assessment)] = biweekly_statistics
         # biweekly_assessment.to_csv(biweekly_results_path, index=False)
@@ -420,10 +568,13 @@ def ts_simulation_seasonal_f(seasonality):
         monthly_statistics = trigger_simulation(df_path=os.path.join(monthly_data_path, monthly_files[i]),
                                           project_name=project,
                                           periodicity="monthly",
-                                          seasonality=seasonality)
+                                          seasonality=seasonality, steps=[1,3,6,12])
 
         # monthly_assessment.loc[len(monthly_assessment)] = monthly_statistics
         # monthly_assessment.to_csv(monthly_results_path, index=False)
+
+        save_and_plot_results(biweekly_statistics, biweekly_files, seasonality, periodicity="biweekly")
+        save_and_plot_results(monthly_statistics, biweekly_files, seasonality, periodicity="monthly")
 
         if seasonality:
             print(f"> SARIMAX simulation for project <{project}> performed - {i+1}/{len(biweekly_files)}")
