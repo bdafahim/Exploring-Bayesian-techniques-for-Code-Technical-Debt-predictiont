@@ -10,19 +10,6 @@ from commons import DATA_PATH
 from modules import check_encoding, detect_existing_output
 import json
 
-# Helper functions for metrics calculation
-def MAPE(actual, predicted):
-    return np.mean(np.abs((actual - predicted) / actual)) * 100
-
-def MSE(actual, predicted):
-    return np.mean((actual - predicted) ** 2)
-
-def MAE(actual, predicted):
-    return np.mean(np.abs(actual - predicted))
-
-def RMSE(actual, predicted):
-    return np.sqrt(MSE(actual, predicted))
-
 
 def backward_modelling(df, periodicity, seasonality, output_flag=True):
     """
@@ -548,6 +535,29 @@ def assess_closest_simulations(results, files, seasonality, periodicity):
         # Save the closest simulations
         closest_sim_df = simulated_df[ranked_simulations]
         combined_df = pd.concat([actual_df, mean_simulation.rename('Mean_Simulation'), closest_sim_df], axis=1)
+
+        # Add individual deviations to the combined_df
+        for simulation in ranked_simulations:
+            combined_df[f'Deviation_{simulation}'] = deviations[simulation]
+
+
+        # Prepare to append average deviation values only for 'Simulated_' columns
+            avg_deviation_values = ['Average deviation', None]  # 'Actual' and 'Mean_Simulation' placeholders
+            for col in combined_df.columns[2:]:  # Skip 'Actual' and 'Mean_Simulation'
+                if 'Simulated_' in col and 'Deviation_' not in col:
+                    avg_deviation_values.append(deviations[col].mean())
+                else:
+                    avg_deviation_values.append(None)  # Fill with None for non-simulation columns
+
+            if len(avg_deviation_values) != len(combined_df.columns):
+                raise ValueError(f"Column mismatch: expected {len(combined_df.columns)}, got {len(avg_deviation_values)}")
+
+            # Append the average deviation row
+            avg_deviation_row = pd.DataFrame([avg_deviation_values], columns=combined_df.columns)
+
+      
+        combined_df = pd.concat([combined_df, avg_deviation_row], ignore_index=True)
+
         combined_df.to_csv(os.path.join(output_folder, f"{project}_closest_simulations_steps_{steps}.csv"))
 
         # print(f"Ranked simulations for {project} at {steps} steps: {ranked_simulations}")
