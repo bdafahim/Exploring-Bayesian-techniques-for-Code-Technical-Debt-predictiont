@@ -114,7 +114,7 @@ def backward_modelling(df, periodicity, seasonality, output_flag=True):
     return best_model_cfg, round(best_aic, 2), best_regressors, output_flag
 
 
-def simulate_sqale_index_arima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps, simulations=50):
+def simulate_sqale_index_arima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps, index, simulations=50):
     """
     Simulates the SQALE_INDEX based on the ARIMA model.
     
@@ -180,7 +180,7 @@ def simulate_sqale_index_arima_future_points(training_df, testing_df, best_model
     return results
 
 
-def simulate_sqale_index_sarima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps, simulations=50):
+def simulate_sqale_index_sarima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps, index, simulations=50):
     """
     Simulates the SQALE_INDEX based on the SARIMA model.
     
@@ -199,7 +199,8 @@ def simulate_sqale_index_sarima_future_points(training_df, testing_df, best_mode
 
 
     for steps in steps:
-        simulation_index = range(len(training_df), len(training_df) + steps)
+        last_index = training_df.index[-1]
+        simulation_index = range(last_index + 1, last_index + 1 + steps)
         simulated_results = pd.DataFrame(index=simulation_index, 
                                      columns=[f'Simulated_{i}' for i in range(simulations)])
 
@@ -239,7 +240,10 @@ def simulate_sqale_index_sarima_future_points(training_df, testing_df, best_mode
                 print(f"> Error during simulation {i}: {str(e)}")
                 simulated_results[f'Simulated_{i}'] = np.nan
 
-        actual_df = pd.DataFrame({'Actual': y_train}, index=range(len(y_train)))
+        actual_df = pd.DataFrame({'Actual': y_train}, index=index)
+        print(y_train.tail(10))
+        print('------------------------->')
+        print(actual_df.tail(10))
         results[steps] = (actual_df, simulated_results)
     
     #actual_df = pd.DataFrame({'Actual': y_train}, index=range(len(y_train)))
@@ -264,10 +268,12 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality,steps):
     df = pd.read_csv(df_path, encoding=encoding)
     df.COMMIT_DATE = pd.to_datetime(df.COMMIT_DATE)
     sqale_index = df.SQALE_INDEX.to_numpy()  # Dependent variable
-    split_point = round(len(sqale_index)*0.25)  # Initial data splitting. (80% training 20% testing)
+    split_point = round(len(sqale_index)*0.25)  # Initial data splitting. (75% for training)
     training_df = df.iloc[split_point:, :]
+    print(training_df.tail(10))
     #training_df = df.iloc[:split_point, :]
     testing_df = pd.DataFrame()
+    index = df.index[split_point:]  # Get the corresponding indices
 
     print(f'Backward modeleling started for project>>>>>--- {project_name}')
 
@@ -384,9 +390,9 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality,steps):
 
     if output_flag:
         if(seasonality):
-            results = simulate_sqale_index_sarima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps)
+            results = simulate_sqale_index_sarima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps, index)
         else:
-            results = simulate_sqale_index_arima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps)
+            results = simulate_sqale_index_arima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps, index)
 
         
         return results
@@ -483,6 +489,11 @@ def save_and_plot_results(results, files, seasonality, closest_simulations, peri
                 os.makedirs(plots_folder, exist_ok=True)
 
                 combined_df = pd.concat([actual_df, simulated_df], axis=1)
+                print(actual_df.tail(10))
+                print('------------------------->')
+                print(simulated_df.tail(10))
+                print('------------------------->')
+                print(combined_df.tail(10))
                 combined_df.to_csv(os.path.join(output_folder, f"{project}_simulations_steps_{steps}.csv"))
 
 
