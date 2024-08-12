@@ -487,6 +487,97 @@ def save_and_plot_results(results, files, seasonality, closest_simulations, peri
                 plt.close()
                 #plt.show()
 
+
+
+
+def assess_and_rank_closest_simulations(results, files, seasonality, periodicity):
+    closest_simulations = {}
+    step_ranks = {}
+
+    for i in range(len(files)):
+            if files[i] == '.DS_Store':
+                continue
+
+            project = files[i][:-4]
+
+    for steps, (actual_df, simulated_df) in results.items():
+
+
+        if seasonality:
+            best_model_path = os.path.join(DATA_PATH, "sarimax_simulations_output", f"{project}")
+        else:
+            best_model_path = os.path.join(DATA_PATH, "arimax_simulations_output", f"{project}")
+        
+        # Ensure all directories exist
+        output_folder = os.path.join(best_model_path, 'closest_sim', periodicity)
+        ranked_steps_output_folder = os.path.join(best_model_path, 'sim_windows_total_deviation', periodicity)
+        os.makedirs(output_folder, exist_ok=True)
+        os.makedirs(ranked_steps_output_folder, exist_ok=True)        
+        
+
+        # Ensure all data in simulated_df is numeric
+        simulated_df = simulated_df.apply(pd.to_numeric, errors='coerce')
+
+        # Fill NaN values with a high number to avoid them being closest by mistake
+        simulated_df = simulated_df.fillna(np.inf)
+        # Calculate the mean of simulations for each time step
+        mean_simulation = simulated_df.mean(axis=1)
+
+        # Calculate standard deviation for each simulation from the mean
+        standard_deviation = simulated_df.sub(mean_simulation, axis=0).pow(2).mean(axis=0).pow(0.5)
+
+        # Sum the deviations for each simulation to get an overall deviation measure
+        total_deviation = standard_deviation.sum()
+        
+
+        # Rank the simulations based on their standard deviation (ascending order since lower std dev is preferable)
+        ranked_simulations = standard_deviation.sort_values().index.tolist()
+        closest_simulations[steps] = ranked_simulations
+
+        # Save the closest simulations
+        closest_sim_df = simulated_df[ranked_simulations]
+        combined_df = pd.concat([actual_df, mean_simulation.rename('Mean_Simulation'), closest_sim_df], axis=1)
+
+       # Add standard deviation for each simulation to the combined_df
+        for simulation in simulated_df.columns:
+            combined_df[f'StdDev_{simulation}'] = standard_deviation[simulation]
+
+
+        # Prepare to append average standard deviation values for 'Simulated_' columns
+            avg_std_deviation_values = ['Average Std Dev', None]  # 'Actual' and 'Mean_Simulation' placeholders
+            for col in combined_df.columns[2:]:  # Skip 'Actual' and 'Mean_Simulation'
+                if 'Simulated_' in col and 'StdDev_' not in col:
+                    avg_std_deviation_values.append(standard_deviation[col])
+                else:
+                    avg_std_deviation_values.append(None)  # Fill with None for non-simulation columns
+
+            if len(avg_std_deviation_values) != len(combined_df.columns):
+                raise ValueError(f"Column mismatch: expected {len(combined_df.columns)}, got {len(avg_std_deviation_values)}")
+
+            # Append the average deviation row
+            avg_deviation_row = pd.DataFrame([avg_std_deviation_values], columns=combined_df.columns)
+
+      
+        combined_df = pd.concat([combined_df, avg_deviation_row], ignore_index=True)
+
+        combined_df.to_csv(os.path.join(output_folder, f"{project}_closest_simulations_steps_{steps}.csv"))
+
+        # print(f"Ranked simulations for {project} at {steps} steps: {ranked_simulations}")
+
+        # Sum the total deviations for this step and store it
+        step_ranks[steps] = total_deviation.sum()
+    
+    # Rank the steps based on the sum of their total deviations
+    ranked_steps = sorted(step_ranks.items(), key=lambda x: x[1])
+    ranked_steps_df = pd.DataFrame(ranked_steps, columns=['Steps', 'Total Deviation'])
+    ranked_steps_df.to_csv(os.path.join(ranked_steps_output_folder, f"{project}_simulation_windows_deviation.csv"), index=False)
+
+    print(f"Ranked steps for {project}: {ranked_steps}")
+
+
+    return closest_simulations, ranked_steps
+
+
 def assess_closest_simulations(results, files, seasonality, periodicity):
     closest_simulations = {}
     step_ranks = {}
@@ -623,19 +714,20 @@ def ts_simulation_seasonal_f(seasonality):
                                            periodicity="biweekly",
                                            seasonality=seasonality, steps=[1,2,6,12,24])
 
-        # biweekly_assessment.loc[len(biweekly_assessment)] = biweekly_statistics
-        # biweekly_assessment.to_csv(biweekly_results_path, index=False)
+
         print(f"> Processing {project} for monthly data")
         monthly_statistics = trigger_simulation(df_path=os.path.join(monthly_data_path, monthly_files[i]),
                                           project_name=project,
                                           periodicity="monthly",
                                           seasonality=seasonality, steps=[1,3,6,12])
 
-        # monthly_assessment.loc[len(monthly_assessment)] = monthly_statistics
-        # monthly_assessment.to_csv(monthly_results_path, index=False
+
 
         closest_sim_biwwekly = assess_closest_simulations(biweekly_statistics, biweekly_files, seasonality, periodicity="biweekly")
         closest_sim_monthly = assess_closest_simulations(monthly_statistics, monthly_files, seasonality, periodicity="monthly")
+
+        #closest_sim_biwwekly = assess_and_rank_closest_simulations(biweekly_statistics, biweekly_files, seasonality, periodicity="biweekly")
+        #closest_sim_monthly = assess_and_rank_closest_simulations(monthly_statistics, monthly_files, seasonality, periodicity="monthly")
 
         save_and_plot_results(biweekly_statistics, biweekly_files, seasonality, closest_sim_biwwekly, periodicity="biweekly")
         save_and_plot_results(monthly_statistics, monthly_files, seasonality, closest_sim_monthly, periodicity="monthly")
