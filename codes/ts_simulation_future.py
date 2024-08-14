@@ -239,7 +239,6 @@ def simulate_sqale_index_sarima_future_points(training_df, testing_df, best_mode
 
 def build_future_exog(best_model_cfg, training_df, steps, simulations, best_regressors):
     future_exog_dict = {}
-    all_simulations_df = pd.DataFrame()
 
     # Apply np.log1p to the training data for the best regressors
     training_df_log_transformed = training_df.copy()
@@ -258,11 +257,10 @@ def build_future_exog(best_model_cfg, training_df, steps, simulations, best_regr
                 
                 future_exog[column] = simulated_values
 
-        # Check and handle negative or NaN values before applying np.log1p()
         future_exog[future_exog < 0] = np.nan  # Optionally replace negative values with NaN
         future_exog = future_exog.fillna(0)  # Optionally fill NaN values with 0
 
-        # Apply np.log1p() to future_exog
+   
         future_exog = future_exog[best_regressors]
         future_exog_dict[i] = future_exog
 
@@ -302,54 +300,26 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality,steps):
     if(project_name == 'archiva'):
         output_flag = True
 
-        if(periodicity == 'biweekly'):
-            best_model_cfg = [[
-                0,
-                1,
-                1
-            ],
-            [
-                0,
-                0,
-                0,
-                26
-            ]]
+        if periodicity == 'biweekly':
+            best_model_cfg = [[0, 1, 1], [0, 0, 0, 26]]
             best_aic = 1606.92
-            best_regressors = ["S00117","S00108"]
+            best_regressors = ["S00117", "S00108"]
         else:
-            best_model_cfg = [[
-                0,
-                1,
-                0
-            ],
-            [
-                0,
-                0,
-                0,
-                12
-            ]]
-        best_aic = 812.77
-        best_regressors = ["RedundantThrowsDeclarationCheck",
-            "S1488",
-            "S1905",
-            "UselessImportCheck",
-            "S00108"]
+            best_model_cfg = [[0, 1, 0], [0, 0, 0, 12]]
+            best_aic = 812.77
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S1488",
+                "S1905",
+                "UselessImportCheck",
+                "S00108"
+            ]
         
     elif(project_name == 'httpcore'):
         output_flag = True
 
-        if(periodicity == 'biweekly'):
-            best_model_cfg = [[
-                0,
-                1,
-                0
-            ],
-            [
-                0,
-                0,
-                0,
-                26
-            ]]
+        if periodicity == 'biweekly':
+            best_model_cfg = [[0, 1, 0], [0, 0, 0, 26]]
             best_aic = 2931.39
             best_regressors = [
                 "S1213",
@@ -360,27 +330,17 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality,steps):
                 "S1226",
                 "S00112",
                 "S1151"
-        ]
+            ]
         else:
-            best_model_cfg = [[
-                0,
-                1,
-                0
-            ],
-            [
-                0,
-                0,
-                0,
-                12
-            ]]
-        best_aic = 1385.29
-        best_regressors = [
-            "RedundantThrowsDeclarationCheck",
-            "S00117",
-            "S1488",
-            "DuplicatedBlocks",
-            "S00112"
-        ]
+            best_model_cfg = [[0, 1, 0], [0, 0, 0, 12]]
+            best_aic = 1385.29
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S1488",
+                "DuplicatedBlocks",
+                "S00112"
+            ]
     else:
         best_model_cfg, best_aic, best_regressors, output_flag = backward_modelling(
         df=training_df, periodicity=periodicity, seasonality=seasonality
@@ -471,11 +431,14 @@ def save_and_plot_results(results, files, seasonality, closest_simulations, best
                     # Get actual exogenous values for the corresponding steps
                     actual_exog_values = training_df_log_transformed[best_regressors].iloc[-steps:]
 
-                    # Combine the actual exog values with the future exog simulations
-                    future_exog_combined_df = pd.concat([actual_exog_values.reset_index(drop=True), future_exog_df], axis=0)
-                    
-                    # Save the combined DataFrame
-                    future_exog_combined_df.to_csv(
+                    # Create a new DataFrame to organize actual and simulated values under each regressor
+                    combined_exog_df = pd.DataFrame()
+                    for regressor in best_regressors:
+                        combined_exog_df[f'{regressor}_Actual'] = actual_exog_values[regressor].reset_index(drop=True)
+                        combined_exog_df[f'{regressor}_Simulated'] = future_exog_df[regressor].reset_index(drop=True)
+
+                    # Save the combined DataFrame with both actual and simulated values
+                    combined_exog_df.to_csv(
                         os.path.join(exog_folder, f"{project}_future_exog_sim_{sim_index}_steps_{steps}.csv"),
                         index=False
                     )
@@ -721,14 +684,14 @@ def ts_simulation_seasonal_f(seasonality):
 
         # Runs the SARIMAX execution for the given project in biweekly format
         print(f"> Processing {project} for biweekly data")
-        biweekly_statistics, best_regressors = trigger_simulation(df_path=os.path.join(biweekly_data_path, biweekly_files[i]),
+        biweekly_statistics, best_regressors_biweekly = trigger_simulation(df_path=os.path.join(biweekly_data_path, biweekly_files[i]),
                                            project_name=project,
                                            periodicity="biweekly",
                                            seasonality=seasonality, steps=[1,2,6,12,24])
 
 
         print(f"> Processing {project} for monthly data")
-        monthly_statistics, best_regressors = trigger_simulation(df_path=os.path.join(monthly_data_path, monthly_files[i]),
+        monthly_statistics, best_regressors_monthly = trigger_simulation(df_path=os.path.join(monthly_data_path, monthly_files[i]),
                                           project_name=project,
                                           periodicity="monthly",
                                           seasonality=seasonality, steps=[1,3,6,12])
@@ -741,9 +704,9 @@ def ts_simulation_seasonal_f(seasonality):
         #closest_sim_biwwekly = assess_and_rank_closest_simulations(biweekly_statistics, biweekly_files, seasonality, periodicity="biweekly")
         #closest_sim_monthly = assess_and_rank_closest_simulations(monthly_statistics, monthly_files, seasonality, periodicity="monthly")
 
-        save_and_plot_results(biweekly_statistics, biweekly_files, seasonality, closest_sim_biwwekly, best_regressors,
+        save_and_plot_results(biweekly_statistics, biweekly_files, seasonality, closest_sim_biwwekly, best_regressors_biweekly,
                               df_path=os.path.join(biweekly_data_path, biweekly_files[i]), periodicity="biweekly")
-        save_and_plot_results(monthly_statistics, monthly_files, seasonality, closest_sim_monthly, best_regressors,
+        save_and_plot_results(monthly_statistics, monthly_files, seasonality, closest_sim_monthly, best_regressors_monthly,
                               df_path=os.path.join(monthly_data_path, monthly_files[i]), periodicity="monthly")
 
         if seasonality:

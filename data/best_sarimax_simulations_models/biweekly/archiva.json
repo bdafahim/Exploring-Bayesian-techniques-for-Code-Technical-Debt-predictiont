@@ -12,12 +12,9 @@
             26
         ]
     ],
-    "best_aic": 812.77,
+    "best_aic": 1606.92,
     "best_regressors": [
-        "RedundantThrowsDeclarationCheck",
-        "S1488",
-        "S1905",
-        "UselessImportCheck",
+        "S00117",
         "S00108"
     ]
 }
