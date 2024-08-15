@@ -7,7 +7,7 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
 from sklearn.exceptions import ConvergenceWarning
 import matplotlib.pyplot as plt
 from commons import DATA_PATH
-from modules import check_encoding, detect_existing_output
+from modules import check_encoding, detect_existing_output, MAE
 import json
 
 
@@ -419,7 +419,13 @@ def save_and_plot_results(results, files, seasonality, closest_simulations, best
                 os.makedirs(output_folder, exist_ok=True)
                 os.makedirs(plots_folder, exist_ok=True)
 
-                combined_df = pd.concat([actual_df, simulated_df], axis=1)
+                # Slice the actual_df to include only the last 'steps' values
+                sliced_actual_df = actual_df.iloc[-5:]
+                simulated_df = simulated_df.round(2)
+                
+                sliced_actual_df.rename(columns={'Actual': 'Actual_last_5_vals'}, inplace=True)
+
+                combined_df = pd.concat([sliced_actual_df, simulated_df], axis=1)
                 combined_df.to_csv(os.path.join(output_folder, f"{project}_simulations_steps_{steps}.csv"))
                 os.makedirs(exog_folder, exist_ok=True)
 
@@ -578,60 +584,64 @@ def assess_closest_simulations(results, files, seasonality, periodicity):
 
         # Ensure all data in simulated_df is numeric
         simulated_df = simulated_df.apply(pd.to_numeric, errors='coerce')
-
         # Fill NaN values with a high number to avoid them being closest by mistake
         simulated_df = simulated_df.fillna(np.inf)
+        # Round simulated columns to 2 decimal places
+        simulated_df = simulated_df.round(2)
+
+
         # Calculate the mean of simulations for each time step
-        mean_simulation = simulated_df.mean(axis=1)
+        mean_simulation = simulated_df.mean(axis=1).round(2)
 
-        # Compute the absolute deviation of each simulation from the mean
-        deviations = simulated_df.sub(mean_simulation, axis=0).abs()
 
-        # Sum the deviations for each simulation to get an overall deviation measure
-        total_deviation = deviations.sum()
+        # Compute the MAE for each simulation from the mean simulation
+        mae_values = simulated_df.apply(lambda col: round(MAE(col, mean_simulation), 2), axis=0)
         
 
         # Identify the simulations with the smallest total deviations
         # Rank the simulations based on the total deviation
-        ranked_simulations = total_deviation.sort_values().index.tolist()
+        ranked_simulations = mae_values.sort_values().index.tolist()
         closest_simulations[steps] = ranked_simulations
+
+        # Slice the actual_df to include only the last 'steps' values
+        sliced_actual_df = actual_df.iloc[-5:]
+
+        sliced_actual_df.rename(columns={'Actual': 'Actual_last_5_vals'}, inplace=True)
 
         # Save the closest simulations
         closest_sim_df = simulated_df[ranked_simulations]
-        combined_df = pd.concat([actual_df, mean_simulation.rename('Mean_Simulation'), closest_sim_df], axis=1)
+        combined_df = pd.concat([sliced_actual_df, mean_simulation.rename('Mean_Simulation'), closest_sim_df], axis=1)
 
-        # Add individual deviations to the combined_df
+        '''# Add individual MAEs to the combined_df
         for simulation in ranked_simulations:
-            combined_df[f'Deviation_{simulation}'] = deviations[simulation]
+            combined_df[f'MAE_{simulation}'] = mae_values[simulation]'''
 
 
-        # Prepare to append average deviation values only for 'Simulated_' columns
-            avg_deviation_values = ['Average deviation', None]  # 'Actual' and 'Mean_Simulation' placeholders
-            for col in combined_df.columns[2:]:  # Skip 'Actual' and 'Mean_Simulation'
-                if 'Simulated_' in col and 'Deviation_' not in col:
-                    avg_deviation_values.append(deviations[col].mean())
-                else:
-                    avg_deviation_values.append(None)  # Fill with None for non-simulation columns
+        # Prepare to append  MAE values 
+        avg_mae_values = ['MAE', None]  # 'Actual' and 'Mean_Simulation' placeholders
+        for col in combined_df.columns[2:]:  # Skip 'Actual' and 'Mean_Simulation'
+            if 'Simulated_' in col:
+                avg_mae_values.append(mae_values[col])
+            else:
+                avg_mae_values.append(None)  # Fill with None for non-simulation columns
 
-            if len(avg_deviation_values) != len(combined_df.columns):
-                raise ValueError(f"Column mismatch: expected {len(combined_df.columns)}, got {len(avg_deviation_values)}")
+        if len(avg_mae_values) != len(combined_df.columns):
+            raise ValueError(f"Column mismatch: expected {len(combined_df.columns)}, got {len(avg_mae_values)}")
 
-            # Append the average deviation row
-            avg_deviation_row = pd.DataFrame([avg_deviation_values], columns=combined_df.columns)
-
+        # Append the average MAE row
+        avg_mae_row = pd.DataFrame([avg_mae_values], columns=combined_df.columns)
       
-        combined_df = pd.concat([combined_df, avg_deviation_row], ignore_index=True)
+        combined_df = pd.concat([combined_df, avg_mae_row], ignore_index=True)
 
         combined_df.to_csv(os.path.join(output_folder, f"{project}_closest_simulations_steps_{steps}.csv"))
 
-        # print(f"Ranked simulations for {project} at {steps} steps: {ranked_simulations}")
 
-        # Sum the total deviations for this step and store it
-        step_ranks[steps] = total_deviation.sum()
+        # Sum the total MAEs for this step and store it
+        step_ranks[steps] = mae_values.sum()
     
-    # Rank the steps based on the sum of their total deviations
+    # Rank the steps based on the sum of their total MAEs
     ranked_steps = sorted(step_ranks.items(), key=lambda x: x[1])
-    ranked_steps_df = pd.DataFrame(ranked_steps, columns=['Steps', 'Total Deviation'])
+    ranked_steps_df = pd.DataFrame(ranked_steps, columns=['Steps', 'Total MAE'])
     ranked_steps_df.to_csv(os.path.join(ranked_steps_output_folder, f"{project}_simulation_windows_deviation.csv"), index=False)
 
     print(f"Ranked steps for {project}: {ranked_steps}")
