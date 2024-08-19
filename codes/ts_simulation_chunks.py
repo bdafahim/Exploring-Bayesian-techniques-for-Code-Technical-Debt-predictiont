@@ -180,7 +180,7 @@ def simulate_sqale_index_arima_future_points(training_df, testing_df, best_model
     return results
 
 
-def simulate_sqale_index_sarima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps, index, simulations=50):
+def simulate_sqale_index_sarima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps, index, simulations=30):
     """
     Simulates the SQALE_INDEX based on the SARIMA model.
     
