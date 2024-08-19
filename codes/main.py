@@ -16,8 +16,8 @@ from ts_modelling_speed import ts_models
 from related_work_speed import related_models
 from result_combiner import combine_results
 #from ts_simulation_future import ts_simulation_seasonal_f
-#from ts_simulation_chunks import ts_simulation_seasonal_f
-from ts_simulation_regressor_combination import ts_simulation_seasonal_f
+from ts_simulation_chunks import ts_simulation_seasonal_f
+#from ts_simulation_regressor_combination import ts_simulation_seasonal_f
 
 from commons import SARIMAX, SIMULATION, SIMULATION_FUTURE_POINTS,  RELATED_WORK, ML_MODELS, COMBINE_RESULTS, PREPROCESSING
 
