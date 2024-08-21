@@ -103,11 +103,12 @@ def backward_modelling(df, periodicity, seasonality, output_flag=True):
 
 def simulate_sqale_index_arima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps, simulations=50):
     """
-    Simulates the SQALE_INDEX based on the ARIMA model.
+    Simulates the SQALE_INDEX based on the SARIMA model.
     
     :param training_df: Training DataFrame with actual SQALE_INDEX and regressors
-    :param best_model_cfg: Best ARIMA model configuration obtained from backward_modelling
+    :param best_model_cfg: Best SARIMA model configuration obtained from backward_modelling
     :param simulations: Number of simulations to perform
+    :param steps: Number of steps to forecast beyond the training data length
     :return: DataFrame with actual and simulated SQALE_INDEX
     """
     results = {}
@@ -123,25 +124,27 @@ def simulate_sqale_index_arima_future_points(training_df, testing_df, best_model
         simulated_results = pd.DataFrame(index=simulation_index, 
                                      columns=[f'Simulated_{i}' for i in range(simulations)])
 
-        # Prepare future exogenous values
-        #future_exog = np.tile(X_train_scaled.iloc[-1], (steps, 1))
-
-        if testing_df.empty:
-            print('testing_df is empty')
-            future_exog = np.tile(X_train_scaled.iloc[-1], (steps, 1))
-        else:
-            # If testing_df provides future exogenous values, use them
-            future_exog = np.log1p(testing_df[best_regressors].iloc[:steps]).values
-
-        # Assuming you might use the last known exogenous values for future simulation steps
-        # If testing_df is not provided or is empty, use the last values from training_df
-        
+        # Generate future exogenous values for all simulations
+        future_exog_dict = build_future_exog(best_model_cfg, training_df, steps, simulations, best_regressors)
 
         for i in range(simulations):
             try:
                 model = SARIMAX(y_train, exog=X_train_scaled, order=arima_order,
                             enforce_stationarity=True, enforce_invertibility=True)
                 fitted_model = model.fit(disp=False)
+
+                
+               # Extract values from future_exog
+                future_exog = future_exog_dict[i].values
+
+                # Ensure future_exog is of the correct shape
+                if future_exog.shape != (steps, len(best_regressors)):
+                    raise ValueError(f"Provided exogenous values are not of the appropriate shape. Required ({steps}, {len(best_regressors)}), got {future_exog.shape}")
+
+                # Print the future_exog for this simulation and step
+                print(f"Future exogenous values for simulation {i} at step {steps}:")
+                print(future_exog)
+                print('<------------------>')
 
                 '''last_values = y_train.values[-1:]
                 simulated_values = fitted_model.simulate(nsimulations=steps, anchor='end', initial_state=fitted_model.predicted_state[:, -1], exog=future_exog)
@@ -160,12 +163,11 @@ def simulate_sqale_index_arima_future_points(training_df, testing_df, best_model
                 simulated_results[f'Simulated_{i}'] = np.nan
 
         actual_df = pd.DataFrame({'Actual': y_train}, index=range(len(y_train)))
-        results[steps] = (actual_df, simulated_results)
+        results[steps] = (actual_df, simulated_results, future_exog_dict)
     
     #actual_df = pd.DataFrame({'Actual': y_train}, index=range(len(y_train)))
 
     return results
-
 
 def simulate_sqale_index_sarima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps, simulations=30):
     """
@@ -341,6 +343,187 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality,steps):
                 "DuplicatedBlocks",
                 "S00112"
             ]
+    elif(project_name == 'digester'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[2, 1, 1], [0, 0, 0, 26]]
+            best_aic = 2931.39
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S1905",
+                "S1488",
+            ]
+        else:
+            best_model_cfg = [[2, 1, 0], [0, 0, 0, 12]]
+            best_aic = 2407.12
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S1226",
+                "S1155",
+                "S1132"
+            ]
+    elif(project_name == 'collections'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[2, 0, 0], [0, 0, 0, 26]]
+            best_aic = 2931.39
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S00122",
+                "S1488",
+                "S1905",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S1226",
+                "S00112",
+                "S1155",
+                "S00108",
+                "S1151"
+            ]
+        else:
+            best_model_cfg = [[0, 1, 4], [0, 0, 0, 12]]
+            best_aic = 2407.12
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S1488",
+                "S1905",
+                "DuplicatedBlocks",
+                "S1226",
+                "S00112",
+                "S1151",
+                "S1132",
+                "S1481"
+            ]
+    elif(project_name == 'batik'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[2, 0, 0], [0, 1, 0, 26]]
+            best_aic = -169.57,
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S00122",
+                "S1488",
+                "S1905",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S00112",
+                "S1155",
+                "S00108",
+                "S1151",
+                "S1132",
+                "S1481"
+            ]
+        else:
+            best_model_cfg = [[0, 1, 4], [0, 0, 0, 12]]
+            best_aic = 2407.12
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S1488",
+                "S1905",
+                "DuplicatedBlocks",
+                "S1226",
+                "S00112",
+                "S1151",
+                "S1132",
+                "S1481"
+            ]
+    elif(project_name == 'bcel'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[1, 1, 0], [0, 0, 0, 26]]
+            best_aic = 3559.22,
+            best_regressors = [
+                "S1213",
+                "S1488",
+                "S1226",
+                "S00112",
+                "S1155",
+                "S1151",
+                "S1132",
+                "S1481"
+            ]
+        else:
+            best_model_cfg = [[2, 1, 2], [0, 0, 0, 12]]
+            best_aic = 1797.43,
+            best_regressors = [
+                "S00117",
+                "S1226",
+                "S00112",
+                "S1155",
+                "S1151",
+                "S1132",
+                "S1481"
+            ]
+    elif(project_name == 'beanutils'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[1, 0, 0], [0, 0, 0, 26]]
+            best_aic = 5363.08,
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S00122",
+                "S1488",
+                "S1905",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S1226",
+                "S00112",
+                "S1155",
+                "S00108",
+                "S1151",
+                "S1132",
+                "S1481"
+            ]
+        else:
+            best_model_cfg = [[0, 1, 0], [0, 0, 0, 12]]
+            best_aic = 2521.03,
+            best_regressors = [
+                "S1905",
+                "S1226",
+                "S00112",
+                "S00108",
+                "S1481"
+            ]
+    elif(project_name == 'cocoon'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[0, 1, 0], [0, 0, 0, 26]]
+            best_aic = 1434.43,
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S00122",
+                "S1905",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S1155"
+            ]
+        else:
+            best_model_cfg = [[1, 1, 0], [0, 1, 1, 12]]
+            best_aic = 2521.03,
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S00112",
+                "S00108",
+                "S1151",
+                "S1132"
+            ]
     else:
         best_model_cfg, best_aic, best_regressors, output_flag = backward_modelling(
         df=training_df, periodicity=periodicity, seasonality=seasonality
@@ -379,93 +562,84 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality,steps):
 
     else:
         print("Model fitting failed. Please check the data and parameters.")
+        return None, None
     
 
 
-def save_and_plot_results(results, files, seasonality, closest_simulations, best_regressors, df_path, periodicity):
+def save_and_plot_results(results, project, seasonality, closest_simulations, best_regressors, df_path, periodicity):
             
+    encoding = check_encoding(df_path)
+    training_df = pd.read_csv(df_path, encoding=encoding)
+    training_df.COMMIT_DATE = pd.to_datetime(training_df.COMMIT_DATE)
+    sqale_index = training_df.SQALE_INDEX.to_numpy()  # Dependent variable
+    split_point = round(len(sqale_index)*0.8)  # Initial data splitting. (80% training 20% testing)
+    #training_df = df.iloc[:split_point, :]
+    testing_df = pd.DataFrame()
 
-        encoding = check_encoding(df_path)
-        training_df = pd.read_csv(df_path, encoding=encoding)
-        training_df.COMMIT_DATE = pd.to_datetime(training_df.COMMIT_DATE)
-        sqale_index = training_df.SQALE_INDEX.to_numpy()  # Dependent variable
-        split_point = round(len(sqale_index)*0.8)  # Initial data splitting. (80% training 20% testing)
-        #training_df = df.iloc[:split_point, :]
-        testing_df = pd.DataFrame()
+    # Apply np.log1p to the training data for the best regressors
+    training_df_log_transformed = training_df.copy()
+    training_df_log_transformed[best_regressors] = np.log1p(training_df[best_regressors])
 
-        # Apply np.log1p to the training data for the best regressors
-        training_df_log_transformed = training_df.copy()
-        training_df_log_transformed[best_regressors] = np.log1p(training_df[best_regressors])
+    for steps, (actual_df, simulated_df, future_exog_dict) in results.items():
 
-        for i in range(len(files)):
-            if files[i] == '.DS_Store':
-                continue
+        # Save to CSV
+        if seasonality:
+            best_model_path = os.path.join(DATA_PATH, "sarimax_simulations_output", f"{project}")
+        else:
+            best_model_path = os.path.join(DATA_PATH, "arimax_simulations_output", f"{project}")
+    
+        # Ensure all directories exist
+        output_folder = os.path.join(best_model_path, 'results', periodicity)
+        plots_folder = os.path.join(best_model_path, 'plots', periodicity)
+        exog_folder = os.path.join(best_model_path, 'exog_data', periodicity)
 
-            project = files[i][:-4]
+        os.makedirs(output_folder, exist_ok=True)
+        os.makedirs(plots_folder, exist_ok=True)
 
-            for steps, (actual_df, simulated_df, future_exog_dict) in results.items():
-
-                # Save to CSV
-                if seasonality:
-                    best_model_path = os.path.join(DATA_PATH, "sarimax_simulations_output", f"{project}")
-                else:
-                    best_model_path = os.path.join(DATA_PATH, "arimax_simulations_output", f"{project}")
+        # Slice the actual_df to include only the last 'steps' values
+        sliced_actual_df = actual_df.iloc[-5:]
+        simulated_df = simulated_df.round(2)
         
-                # Ensure all directories exist
-                output_folder = os.path.join(best_model_path, 'results', periodicity)
-                plots_folder = os.path.join(best_model_path, 'plots', periodicity)
-                exog_folder = os.path.join(best_model_path, 'exog_data', periodicity)
+        sliced_actual_df.rename(columns={'Actual': 'Actual_last_5_vals'}, inplace=True)
 
-                os.makedirs(output_folder, exist_ok=True)
-                os.makedirs(plots_folder, exist_ok=True)
+        combined_df = pd.concat([sliced_actual_df, simulated_df], axis=1)
+        combined_df.to_csv(os.path.join(output_folder, f"{project}_simulations_steps_{steps}.csv"))
+        os.makedirs(exog_folder, exist_ok=True)
 
-                # Slice the actual_df to include only the last 'steps' values
-                sliced_actual_df = actual_df.iloc[-5:]
-                simulated_df = simulated_df.round(2)
-                
-                sliced_actual_df.rename(columns={'Actual': 'Actual_last_5_vals'}, inplace=True)
+        # Create and save future exogenous variables for each simulation
+        for sim_index, future_exog in future_exog_dict.items():
+            # Extract the simulated future exog values
+            future_exog_df = pd.DataFrame(future_exog)
 
-                combined_df = pd.concat([sliced_actual_df, simulated_df], axis=1)
-                combined_df.to_csv(os.path.join(output_folder, f"{project}_simulations_steps_{steps}.csv"))
-                os.makedirs(exog_folder, exist_ok=True)
+            # Get actual exogenous values for the corresponding steps
+            actual_exog_values = training_df_log_transformed[best_regressors].iloc[-steps:]
 
-                # Create and save future exogenous variables for each simulation
-                for sim_index, future_exog in future_exog_dict.items():
-                    # Extract the simulated future exog values
-                    future_exog_df = pd.DataFrame(future_exog)
+            # Create a new DataFrame to organize actual and simulated values under each regressor
+            combined_exog_df = pd.DataFrame()
+            for regressor in best_regressors:
+                combined_exog_df[f'{regressor}_Actual'] = actual_exog_values[regressor].reset_index(drop=True)
+                combined_exog_df[f'{regressor}_Simulated'] = future_exog_df[regressor].reset_index(drop=True)
 
-                    # Get actual exogenous values for the corresponding steps
-                    actual_exog_values = training_df_log_transformed[best_regressors].iloc[-steps:]
+            # Save the combined DataFrame with both actual and simulated values
+            combined_exog_df.to_csv(
+                os.path.join(exog_folder, f"{project}_future_exog_sim_{sim_index}_steps_{steps}.csv"),
+                index=False
+            )
 
-                    # Create a new DataFrame to organize actual and simulated values under each regressor
-                    combined_exog_df = pd.DataFrame()
-                    for regressor in best_regressors:
-                        combined_exog_df[f'{regressor}_Actual'] = actual_exog_values[regressor].reset_index(drop=True)
-                        combined_exog_df[f'{regressor}_Simulated'] = future_exog_df[regressor].reset_index(drop=True)
+        plt.figure(figsize=(12, 6))
+        plt.plot(actual_df.index, actual_df['Actual'], label='Actual', color='red')
+        for column in simulated_df.columns:
+            plt.plot(simulated_df.index, simulated_df[column], alpha=0.3)
+        plt.plot(simulated_df.index, simulated_df.mean(axis=1), label='Mean of Simulations', color='black', linewidth=2)
 
-                    # Save the combined DataFrame with both actual and simulated values
-                    combined_exog_df.to_csv(
-                        os.path.join(exog_folder, f"{project}_future_exog_sim_{sim_index}_steps_{steps}.csv"),
-                        index=False
-                    )
+        '''for simulation in closest_simulations[steps]:
+            plt.plot(simulated_df.index, simulated_df[simulation], alpha=0.3, label=f'Closest Simulation {simulation}')'''
 
-
-
-                plt.figure(figsize=(12, 6))
-                plt.plot(actual_df.index, actual_df['Actual'], label='Actual', color='red')
-                for column in simulated_df.columns:
-                    plt.plot(simulated_df.index, simulated_df[column], alpha=0.3)
-                plt.plot(simulated_df.index, simulated_df.mean(axis=1), label='Mean of Simulations', color='black', linewidth=2)
-
-                '''for simulation in closest_simulations[steps]:
-                    plt.plot(simulated_df.index, simulated_df[simulation], alpha=0.3, label=f'Closest Simulation {simulation}')'''
-
-                plt.legend()
-                plt.title(f'All Simulations for SQALE_INDEX (Steps = {steps})')
-                plt.savefig(os.path.join(plots_folder, f"{project}_simulations_steps_{steps}.png"))
-                plt.close()
-                #plt.show()
-
+        plt.legend()
+        plt.title(f'All Simulations for SQALE_INDEX (Steps = {steps})')
+        plt.savefig(os.path.join(plots_folder, f"{project}_simulations_steps_{steps}.png"))
+        plt.close()
+        #plt.show()
 
 
 
@@ -557,15 +731,9 @@ def assess_and_rank_closest_simulations(results, files, seasonality, periodicity
     return closest_simulations, ranked_steps
 
 
-def assess_closest_simulations(results, files, seasonality, periodicity):
+def assess_closest_simulations(results, seasonality, project, periodicity):
     closest_simulations = {}
     step_ranks = {}
-
-    for i in range(len(files)):
-            if files[i] == '.DS_Store':
-                continue
-
-            project = files[i][:-4]
 
     for steps, (actual_df, simulated_df, future_exog_dict) in results.items():
 
@@ -649,48 +817,22 @@ def assess_closest_simulations(results, files, seasonality, periodicity):
 
     return closest_simulations, ranked_steps
 
-def ts_simulation_seasonal_f(seasonality):
+def ts_simulation(seasonality):
     """
     Executes the tsa simulatioin process
     """
-
-    # Check if Seasonality is taken into consideration
-    if seasonality == True:
-        output_directory = "sarimax_simulation_results"
-    else:
-        output_directory = "arimax_simulation_results"
-
     biweekly_data_path = os.path.join(DATA_PATH, "biweekly_data_1")
     monthly_data_path = os.path.join(DATA_PATH, "monthly_data_1")
-    output_path = os.path.join(DATA_PATH, output_directory)
-    if not os.path.exists(output_path):
-        os.mkdir(output_path)
-        os.mkdir(os.path.join(output_path, "monthly_results"))
-        os.mkdir(os.path.join(output_path, "biweekly_results"))
+
 
     # List existing data files:
     biweekly_files = os.listdir(biweekly_data_path)
     monthly_files = os.listdir(monthly_data_path)
 
-    assessment_statistics = ['Simulation', 'MSE', 'MAE', 'RMSE']
     for i in range(len(biweekly_files)):
         if biweekly_files[i] == '.DS_Store':
             continue
         project = biweekly_files[i][:-4]
-        monthly_results_path = os.path.join(output_path, "monthly_results", f"{project}.csv")
-        biweekly_results_path = os.path.join(output_path, "biweekly_results", f"{project}.csv")
-
-
-        biweekly_assessment = pd.DataFrame(columns=assessment_statistics)
-        monthly_assessment = pd.DataFrame(columns=assessment_statistics)
-
-        # Check if the project has already been processed
-        if detect_existing_output(project=project, paths=[monthly_results_path, biweekly_results_path],
-                                  flag_num=i, files_num=len(biweekly_files), approach=f"{seasonality}-ARIMAX"):
-            print(f"> Project {project} already procesed for SARIMAX simulation")
-            continue
-
-
 
         # Runs the SARIMAX execution for the given project in biweekly format
         print(f"> Processing {project} for biweekly data")
@@ -705,18 +847,23 @@ def ts_simulation_seasonal_f(seasonality):
                                           project_name=project,
                                           periodicity="monthly",
                                           seasonality=seasonality, steps=[1,3,6,12])
+        
+        # Check if either biweekly_statistics or monthly_statistics is None
+        if biweekly_statistics is None or monthly_statistics is None:
+            print(f"Skipping {project} due to simulation issues.")
+            continue
 
 
 
-        closest_sim_biwwekly = assess_closest_simulations(biweekly_statistics, biweekly_files, seasonality, periodicity="biweekly")
-        closest_sim_monthly = assess_closest_simulations(monthly_statistics, monthly_files, seasonality, periodicity="monthly")
+        closest_sim_biwwekly = assess_closest_simulations(biweekly_statistics, seasonality, project, periodicity="biweekly")
+        closest_sim_monthly = assess_closest_simulations(monthly_statistics, seasonality, project, periodicity="monthly")
 
         #closest_sim_biwwekly = assess_and_rank_closest_simulations(biweekly_statistics, biweekly_files, seasonality, periodicity="biweekly")
         #closest_sim_monthly = assess_and_rank_closest_simulations(monthly_statistics, monthly_files, seasonality, periodicity="monthly")
 
-        save_and_plot_results(biweekly_statistics, biweekly_files, seasonality, closest_sim_biwwekly, best_regressors_biweekly,
+        save_and_plot_results(biweekly_statistics, project, seasonality, closest_sim_biwwekly, best_regressors_biweekly,
                               df_path=os.path.join(biweekly_data_path, biweekly_files[i]), periodicity="biweekly")
-        save_and_plot_results(monthly_statistics, monthly_files, seasonality, closest_sim_monthly, best_regressors_monthly,
+        save_and_plot_results(monthly_statistics, project, seasonality, closest_sim_monthly, best_regressors_monthly,
                               df_path=os.path.join(monthly_data_path, monthly_files[i]), periodicity="monthly")
 
         if seasonality:
