@@ -1,0 +1,23 @@
+{
+    "model_params": [
+        [
+            0,
+            1,
+            1
+        ],
+        [
+            0,
+            0,
+            0,
+            12
+        ]
+    ],
+    "best_aic": 1536.79,
+    "best_regressors": [
+        "S1192",
+        "RedundantThrowsDeclarationCheck",
+        "MethodCyclomaticComplexity",
+        "S00108",
+        "S1151"
+    ]
+}

@@ -524,6 +524,179 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality,steps):
                 "S1151",
                 "S1132"
             ]
+    elif(project_name == 'codec'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[0, 1, 1], [0, 0, 0, 26]]
+            best_aic = 1434.43,
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S00122",
+                "S1905",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S1226",
+                "S00112",
+                "S00108",
+                "S1151",
+                "S1481"
+            ]
+        else:
+            best_model_cfg = [[1, 0, 0], [1, 0, 0, 12]]
+            best_aic = 113.07,
+            best_regressors = [
+                "S1905",
+                "DuplicatedBlocks",
+                "S1481"
+            ]
+    elif(project_name == 'commons-cli'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[1, 1, 1], [0, 0, 1, 26]]
+            best_aic = 4963.69,
+            best_regressors = [
+                "S1488",
+                "DuplicatedBlocks",
+                "S00112",
+                "S1132"
+            ]
+        else:
+            best_model_cfg = [[2, 1, 2], [0, 0, 0, 12]]
+            best_aic = 2199.92,
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S1488",
+                "S1226",
+                "S00112",
+                "S1155",
+                "S00108",
+                "S1132",
+                "S1481"
+            ]
+
+    elif(project_name == 'commons-exec'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[1, 0, 0], [0, 0, 0, 26]]
+            best_aic = 2518.98,
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S1488",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S00112",
+                "S00108",
+                "S1151",
+                "S1132",
+                "S1481"
+            ]
+        else:
+            best_model_cfg = [[2, 1, 2], [0, 0, 0, 12]]
+            best_aic = 2196.91,
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S1488",
+                "S1226",
+                "S00112",
+                "S1155",
+                "S1132",
+                "S1481"
+            ]
+    elif(project_name == 'commons-fileupload'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[2, 0, 1], [0, 0, 0, 26]]
+            best_aic = 2044.56,
+            best_regressors = [
+                "S1905",
+                "UselessImportCheck"
+            ]
+        else:
+            best_model_cfg = [[1, 1, 1], [0, 0, 0, 12]]
+            best_aic = 887.55,
+            best_regressors = [
+                "S1488",
+                "S1905",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S00112",
+                "S1155",
+                "S1132",
+                "S1481"
+            ]
+    elif(project_name == 'commons-io'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[1, 0, 0], [1, 0, 1, 26]]
+            best_aic = 20.0
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S00112",
+                "S1132",
+                "S1481"
+            ]
+        else:
+            best_model_cfg = [[2, 0, 1], [0, 0, 0, 12]]
+            best_aic = 26.0,
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00122",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S00112",
+                "S1155",
+                "S00108",
+                "S1151",
+                "S1132",
+                "S1481"
+            ]
+    elif(project_name == 'commons-jelly'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[1, 0, 0], [0, 0, 0, 26]]
+            best_aic = 4744.49,
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00122",
+                "S1905",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S1226",
+                "S1155",
+                "S1151",
+                "S1132",
+                "S1481"
+            ]
+        else:
+            best_model_cfg = [[1, 0, 1], [1, 0, 0, 12]]
+            best_aic = 79.91,
+            best_regressors = [
+                "S1213",
+                "S00122",
+                "S1488",
+                "DuplicatedBlocks",
+                "S1226",
+                "S00112",
+                "S1155",
+                "S00108",
+                "S1151",
+                "S1132"
+            ]
     else:
         best_model_cfg, best_aic, best_regressors, output_flag = backward_modelling(
         df=training_df, periodicity=periodicity, seasonality=seasonality

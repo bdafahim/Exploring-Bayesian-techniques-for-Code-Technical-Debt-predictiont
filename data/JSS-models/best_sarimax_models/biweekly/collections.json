@@ -1,0 +1,26 @@
+{
+    "model_params": [
+        [
+            4,
+            1,
+            3
+        ],
+        [
+            0,
+            0,
+            0,
+            26
+        ]
+    ],
+    "best_aic": 3693.5,
+    "best_regressors": [
+        "S1213",
+        "S1192",
+        "DuplicatedBlocks",
+        "S134",
+        "MethodCyclomaticComplexity",
+        "S00112",
+        "S00108",
+        "S1186"
+    ]
+}

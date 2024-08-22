@@ -1,0 +1,29 @@
+{
+    "model_params": [
+        [
+            0,
+            1,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            26
+        ]
+    ],
+    "best_aic": 1796.37,
+    "best_regressors": [
+        "S1213",
+        "S1192",
+        "RedundantThrowsDeclarationCheck",
+        "S00122",
+        "DuplicatedBlocks",
+        "S134",
+        "S00112",
+        "S1155",
+        "S00108",
+        "S1151",
+        "S1132"
+    ]
+}
