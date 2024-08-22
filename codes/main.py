@@ -36,7 +36,7 @@ def main():
         ts_models(seasonality=False)  # Replicated work
     
     if SIMULATION:
-        ts_simulation(seasonality=False)
+        ts_simulation(seasonality=True)
     
 
     # SARIMA + LM related work stage execution

@@ -697,6 +697,57 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality,steps):
                 "S1151",
                 "S1132"
             ]
+
+    elif(project_name == 'commons-jexl'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[1, 1, 2], [0, 0, 0, 26]]
+            best_aic =3755.07,
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S00122",
+                "DuplicatedBlocks",
+                "S1226",
+                "S00112",
+                "S1155",
+                "S00108",
+                "S1132"
+            ]
+        else:
+            best_model_cfg = [[2, 1, 0], [1, 0, 0, 12]]
+            best_aic = 1503.06,
+            best_regressors = [
+                "S00117",
+                "S1151"
+            ]
+    elif(project_name == 'configuration'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[3, 1, 1], [0, 0, 0, 26]]
+            best_aic = 3105.48
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "MethodCyclomaticComplexity",
+                "S1226",
+                "S00108",
+                "S1186"
+            ]
+        else:
+            best_model_cfg = [[0, 1, 1], [0, 0, 0, 12]]
+            best_aic = 1536.79,
+            best_regressors = [
+                "S1192",
+                "RedundantThrowsDeclarationCheck",
+                "MethodCyclomaticComplexity",
+                "S00108",
+                "S1151"
+            ]
     else:
         best_model_cfg, best_aic, best_regressors, output_flag = backward_modelling(
         df=training_df, periodicity=periodicity, seasonality=seasonality
