@@ -12,7 +12,9 @@
             12
         ]
     ],
-    "best_aic": 79.91,
+    "best_aic": [
+        79.91
+    ],
     "best_regressors": [
         "S1213",
         "S00122",

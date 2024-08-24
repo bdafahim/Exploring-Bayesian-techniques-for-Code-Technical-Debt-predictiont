@@ -12,7 +12,9 @@
             12
         ]
     ],
-    "best_aic": 113.07,
+    "best_aic": [
+        113.07
+    ],
     "best_regressors": [
         "S1905",
         "DuplicatedBlocks",

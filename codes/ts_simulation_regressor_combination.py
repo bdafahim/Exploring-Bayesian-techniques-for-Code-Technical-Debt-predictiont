@@ -103,13 +103,14 @@ def backward_modelling(df, periodicity, seasonality, output_flag=True):
     return best_model_cfg, round(best_aic, 2), best_regressors, output_flag
 
 
-def simulate_sqale_index_arima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps, simulations=50):
+def simulate_sqale_index_arima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps, simulations=30):
     """
-    Simulates the SQALE_INDEX based on the ARIMA model.
+    Simulates the SQALE_INDEX based on the SARIMA model.
     
     :param training_df: Training DataFrame with actual SQALE_INDEX and regressors
-    :param best_model_cfg: Best ARIMA model configuration obtained from backward_modelling
+    :param best_model_cfg: Best SARIMA model configuration obtained from backward_modelling
     :param simulations: Number of simulations to perform
+    :param steps: Number of steps to forecast beyond the training data length
     :return: DataFrame with actual and simulated SQALE_INDEX
     """
     results = {}
@@ -125,25 +126,27 @@ def simulate_sqale_index_arima_future_points(training_df, testing_df, best_model
         simulated_results = pd.DataFrame(index=simulation_index, 
                                      columns=[f'Simulated_{i}' for i in range(simulations)])
 
-        # Prepare future exogenous values
-        #future_exog = np.tile(X_train_scaled.iloc[-1], (steps, 1))
-
-        if testing_df.empty:
-            print('testing_df is empty')
-            future_exog = np.tile(X_train_scaled.iloc[-1], (steps, 1))
-        else:
-            # If testing_df provides future exogenous values, use them
-            future_exog = np.log1p(testing_df[best_regressors].iloc[:steps]).values
-
-        # Assuming you might use the last known exogenous values for future simulation steps
-        # If testing_df is not provided or is empty, use the last values from training_df
-        
+        # Generate future exogenous values for all simulations
+        future_exog_dict = build_future_exog(best_model_cfg, training_df, steps, simulations, best_regressors)
 
         for i in range(simulations):
             try:
                 model = SARIMAX(y_train, exog=X_train_scaled, order=arima_order,
                             enforce_stationarity=True, enforce_invertibility=True)
                 fitted_model = model.fit(disp=False)
+
+                
+               # Extract values from future_exog
+                future_exog = future_exog_dict[i].values
+
+                # Ensure future_exog is of the correct shape
+                if future_exog.shape != (steps, len(best_regressors)):
+                    raise ValueError(f"Provided exogenous values are not of the appropriate shape. Required ({steps}, {len(best_regressors)}), got {future_exog.shape}")
+
+                # Print the future_exog for this simulation and step
+                print(f"Future exogenous values for simulation {i} at step {steps}:")
+                print(future_exog)
+                print('<------------------>')
 
                 '''last_values = y_train.values[-1:]
                 simulated_values = fitted_model.simulate(nsimulations=steps, anchor='end', initial_state=fitted_model.predicted_state[:, -1], exog=future_exog)
@@ -162,11 +165,46 @@ def simulate_sqale_index_arima_future_points(training_df, testing_df, best_model
                 simulated_results[f'Simulated_{i}'] = np.nan
 
         actual_df = pd.DataFrame({'Actual': y_train}, index=range(len(y_train)))
-        results[steps] = (actual_df, simulated_results)
+        results[steps] = (actual_df, simulated_results, future_exog_dict)
     
     #actual_df = pd.DataFrame({'Actual': y_train}, index=range(len(y_train)))
 
     return results
+
+
+
+def build_future_exog(best_model_cfg, training_df, steps, simulations, best_regressors):
+    future_exog_dict = {}
+
+    # Apply np.log1p to the training data for the best regressors
+    training_df_log_transformed = training_df.copy()
+    training_df_log_transformed[best_regressors] = np.log1p(training_df[best_regressors])
+    
+    for i in range(simulations):
+        future_exog = pd.DataFrame(index=range(len(training_df), len(training_df) + steps))
+            
+        for column in best_regressors:  # Assuming the first two columns are not regressors
+            y_train = training_df_log_transformed[column].dropna()
+            if len(y_train) > 0:
+                model = ARIMA(y_train, enforce_stationarity=True, enforce_invertibility=True)
+                fitted_model = model.fit()
+                
+                simulated_values = fitted_model.simulate(nsimulations=steps, anchor='end', initial_state=fitted_model.predicted_state[:, -1])
+                
+                future_exog[column] = simulated_values
+
+        future_exog[future_exog < 0] = np.nan  # Optionally replace negative values with NaN
+        future_exog = future_exog.fillna(0)  # Optionally fill NaN values with 0
+
+   
+        future_exog = future_exog[best_regressors]
+        future_exog_dict[i] = future_exog
+
+
+    print(f"Future exogenous values for simulation {i}:")
+    print(future_exog_dict)
+    print(f':{steps}: <------------------>')
+    return future_exog_dict
 
 
 def simulate_sqale_index_sarima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps, simulations=30):
@@ -343,6 +381,411 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality,steps):
                 "DuplicatedBlocks",
                 "S00112"
             ]
+    elif(project_name == 'digester'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[2, 1, 1], [0, 0, 0, 26]]
+            best_aic = 2931.39
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S1905",
+                "S1488",
+            ]
+        else:
+            best_model_cfg = [[2, 1, 0], [0, 0, 0, 12]]
+            best_aic = 2407.12
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S1226",
+                "S1155",
+                "S1132"
+            ]
+    elif(project_name == 'collections'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[2, 0, 0], [0, 0, 0, 26]]
+            best_aic = 2931.39
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S00122",
+                "S1488",
+                "S1905",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S1226",
+                "S00112",
+                "S1155",
+                "S00108",
+                "S1151"
+            ]
+        else:
+            best_model_cfg = [[0, 1, 4], [0, 0, 0, 12]]
+            best_aic = 2407.12
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S1488",
+                "S1905",
+                "DuplicatedBlocks",
+                "S1226",
+                "S00112",
+                "S1151",
+                "S1132",
+                "S1481"
+            ]
+    elif(project_name == 'batik'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[2, 0, 0], [0, 1, 0, 26]]
+            best_aic = -169.57,
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S00122",
+                "S1488",
+                "S1905",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S00112",
+                "S1155",
+                "S00108",
+                "S1151",
+                "S1132",
+                "S1481"
+            ]
+        else:
+            best_model_cfg = [[0, 1, 4], [0, 0, 0, 12]]
+            best_aic = 2407.12
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S1488",
+                "S1905",
+                "DuplicatedBlocks",
+                "S1226",
+                "S00112",
+                "S1151",
+                "S1132",
+                "S1481"
+            ]
+    elif(project_name == 'bcel'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[1, 1, 0], [0, 0, 0, 26]]
+            best_aic = 3559.22,
+            best_regressors = [
+                "S1213",
+                "S1488",
+                "S1226",
+                "S00112",
+                "S1155",
+                "S1151",
+                "S1132",
+                "S1481"
+            ]
+        else:
+            best_model_cfg = [[2, 1, 2], [0, 0, 0, 12]]
+            best_aic = 1797.43,
+            best_regressors = [
+                "S00117",
+                "S1226",
+                "S00112",
+                "S1155",
+                "S1151",
+                "S1132",
+                "S1481"
+            ]
+    elif(project_name == 'beanutils'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[1, 0, 0], [0, 0, 0, 26]]
+            best_aic = 5363.08,
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S00122",
+                "S1488",
+                "S1905",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S1226",
+                "S00112",
+                "S1155",
+                "S00108",
+                "S1151",
+                "S1132",
+                "S1481"
+            ]
+        else:
+            best_model_cfg = [[0, 1, 0], [0, 0, 0, 12]]
+            best_aic = 2521.03,
+            best_regressors = [
+                "S1905",
+                "S1226",
+                "S00112",
+                "S00108",
+                "S1481"
+            ]
+    elif(project_name == 'cocoon'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[0, 1, 0], [0, 0, 0, 26]]
+            best_aic = 1434.43,
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S00122",
+                "S1905",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S1155"
+            ]
+        else:
+            best_model_cfg = [[1, 1, 0], [0, 1, 1, 12]]
+            best_aic = 2521.03,
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S00112",
+                "S00108",
+                "S1151",
+                "S1132"
+            ]
+    elif(project_name == 'codec'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[0, 1, 1], [0, 0, 0, 26]]
+            best_aic = 1434.43,
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S00122",
+                "S1905",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S1226",
+                "S00112",
+                "S00108",
+                "S1151",
+                "S1481"
+            ]
+        else:
+            best_model_cfg = [[1, 0, 0], [1, 0, 0, 12]]
+            best_aic = 113.07,
+            best_regressors = [
+                "S1905",
+                "DuplicatedBlocks",
+                "S1481"
+            ]
+    elif(project_name == 'commons-cli'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[1, 1, 1], [0, 0, 1, 26]]
+            best_aic = 4963.69,
+            best_regressors = [
+                "S1488",
+                "DuplicatedBlocks",
+                "S00112",
+                "S1132"
+            ]
+        else:
+            best_model_cfg = [[2, 1, 2], [0, 0, 0, 12]]
+            best_aic = 2199.92,
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S1488",
+                "S1226",
+                "S00112",
+                "S1155",
+                "S00108",
+                "S1132",
+                "S1481"
+            ]
+
+    elif(project_name == 'commons-exec'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[1, 0, 0], [0, 0, 0, 26]]
+            best_aic = 2518.98,
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S1488",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S00112",
+                "S00108",
+                "S1151",
+                "S1132",
+                "S1481"
+            ]
+        else:
+            best_model_cfg = [[2, 1, 2], [0, 0, 0, 12]]
+            best_aic = 2196.91,
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S1488",
+                "S1226",
+                "S00112",
+                "S1155",
+                "S1132",
+                "S1481"
+            ]
+    elif(project_name == 'commons-fileupload'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[2, 0, 1], [0, 0, 0, 26]]
+            best_aic = 2044.56,
+            best_regressors = [
+                "S1905",
+                "UselessImportCheck"
+            ]
+        else:
+            best_model_cfg = [[1, 1, 1], [0, 0, 0, 12]]
+            best_aic = 887.55,
+            best_regressors = [
+                "S1488",
+                "S1905",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S00112",
+                "S1155",
+                "S1132",
+                "S1481"
+            ]
+    elif(project_name == 'commons-io'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[1, 0, 0], [1, 0, 1, 26]]
+            best_aic = 20.0
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S00112",
+                "S1132",
+                "S1481"
+            ]
+        else:
+            best_model_cfg = [[2, 0, 1], [0, 0, 0, 12]]
+            best_aic = 26.0,
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00122",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S00112",
+                "S1155",
+                "S00108",
+                "S1151",
+                "S1132",
+                "S1481"
+            ]
+    elif(project_name == 'commons-jelly'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[1, 0, 0], [0, 0, 0, 26]]
+            best_aic = 4744.49,
+            best_regressors = [
+                "RedundantThrowsDeclarationCheck",
+                "S00122",
+                "S1905",
+                "UselessImportCheck",
+                "DuplicatedBlocks",
+                "S1226",
+                "S1155",
+                "S1151",
+                "S1132",
+                "S1481"
+            ]
+        else:
+            best_model_cfg = [[1, 0, 1], [1, 0, 0, 12]]
+            best_aic = 79.91,
+            best_regressors = [
+                "S1213",
+                "S00122",
+                "S1488",
+                "DuplicatedBlocks",
+                "S1226",
+                "S00112",
+                "S1155",
+                "S00108",
+                "S1151",
+                "S1132"
+            ]
+
+    elif(project_name == 'commons-jexl'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[1, 1, 2], [0, 0, 0, 26]]
+            best_aic =3755.07,
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "S00122",
+                "DuplicatedBlocks",
+                "S1226",
+                "S00112",
+                "S1155",
+                "S00108",
+                "S1132"
+            ]
+        else:
+            best_model_cfg = [[2, 1, 0], [1, 0, 0, 12]]
+            best_aic = 1503.06,
+            best_regressors = [
+                "S00117",
+                "S1151"
+            ]
+    elif(project_name == 'configuration'):
+        output_flag = True
+
+        if periodicity == 'biweekly':
+            best_model_cfg = [[3, 1, 1], [0, 0, 0, 26]]
+            best_aic = 3105.48
+            best_regressors = [
+                "S1213",
+                "RedundantThrowsDeclarationCheck",
+                "S00117",
+                "MethodCyclomaticComplexity",
+                "S1226",
+                "S00108",
+                "S1186"
+            ]
+        else:
+            best_model_cfg = [[0, 1, 1], [0, 0, 0, 12]]
+            best_aic = 1536.79,
+            best_regressors = [
+                "S1192",
+                "RedundantThrowsDeclarationCheck",
+                "MethodCyclomaticComplexity",
+                "S00108",
+                "S1151"
+            ]
     else:
         best_model_cfg, best_aic, best_regressors, output_flag = backward_modelling(
         df=training_df, periodicity=periodicity, seasonality=seasonality
@@ -367,36 +810,42 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality,steps):
     json_object = json.dumps(json_dict, indent=4)
     with open(os.path.join(best_model_path, periodicity, f"{project_name}.json"), 'w+') as out:
         out.write(json_object)
-
-    results = {}
-    n = len(best_regressors)
-
-    # Generate all combinations of length n (all regressors)
-    combinations = [tuple(best_regressors)]
     
-    # Generate all combinations of length n-1 (all combinations with one regressor removed)
-    combinations += list(itertools.combinations(best_regressors, n - 1))
+    if output_flag:
 
-    for regressor_combination in combinations:
-        regressor_list = list(regressor_combination)
-        print(f"Running simulation with regressors: {regressor_list}")
-        if output_flag:
-            if(seasonality):
-                combination_results = simulate_sqale_index_sarima_future_points(training_df, testing_df, best_model_cfg, regressor_list, steps)
+        results = {}
+        n = len(best_regressors)
+
+        # Generate all combinations of length n (all regressors)
+        combinations = [tuple(best_regressors)]
+        
+        # Generate all combinations of length n-1 (all combinations with one regressor removed)
+        combinations += list(itertools.combinations(best_regressors, n - 1))
+
+        for regressor_combination in combinations:
+            regressor_list = list(regressor_combination)
+            print(f"Running simulation with regressors: {regressor_list}")
+            if output_flag:
+                if(seasonality):
+                    combination_results = simulate_sqale_index_sarima_future_points(training_df, testing_df, best_model_cfg, regressor_list, steps)
+                else:
+                    combination_results = simulate_sqale_index_arima_future_points(training_df, testing_df, best_model_cfg, regressor_list, steps)
             else:
-                combination_results = simulate_sqale_index_arima_future_points(training_df, testing_df, best_model_cfg, regressor_list, steps)
-        else:
-            print("Model fitting failed. Please check the data and parameters.")
-        
-        # Store the results for this combination
-        results[tuple(regressor_list)] = combination_results
-        
-        
-    return results, combinations
+                print("Model fitting failed. Please check the data and parameters.")
+            
+            # Store the results for this combination
+            results[tuple(regressor_list)] = combination_results
+            
+            
+        return results, combinations
+    
+    else:
+        print("Model fitting failed. Please check the data and parameters.")
+        return None, None
     
 
 
-def save_and_plot_results(results, files, seasonality, closest_simulations, df_path, periodicity):
+def save_and_plot_results(results, project, seasonality, closest_simulations, best_regressors, df_path, periodicity):
     """
     Save and plot the results for each combination of regressors.
 
@@ -414,10 +863,6 @@ def save_and_plot_results(results, files, seasonality, closest_simulations, df_p
     split_point = round(len(sqale_index)*0.8)  # Initial data splitting. (80% training 20% testing)
     testing_df = pd.DataFrame()  # Initialize an empty testing DataFrame
 
-    for i in range(len(files)):
-        if files[i] == '.DS_Store':
-            continue
-        project = files[i][:-4]
 
     for regressor_combination, combination_results in results.items():
         training_df_log_transformed = training_df.copy()
@@ -477,7 +922,7 @@ def save_and_plot_results(results, files, seasonality, closest_simulations, df_p
             plt.savefig(os.path.join(plots_folder, f"{project}_simulations_steps_{steps}.png"))
             plt.close()
 
-def assess_closest_simulations(results, files, seasonality, periodicity):
+def assess_closest_simulations(results, seasonality, project, periodicity):
     """
     Assess and rank the closest simulations for each combination of regressors.
 
@@ -490,10 +935,6 @@ def assess_closest_simulations(results, files, seasonality, periodicity):
     closest_simulations = {}
     step_ranks = {}
 
-    for i in range(len(files)):
-        if files[i] == '.DS_Store':
-            continue
-        project = files[i][:-4]
 
     for regressor_combination, combination_results in results.items():
         if seasonality:
@@ -565,48 +1006,22 @@ def assess_closest_simulations(results, files, seasonality, periodicity):
     return closest_simulations, step_ranks
 
 
-def ts_simulation_seasonal_f(seasonality):
+def ts_simulation(seasonality):
     """
     Executes the tsa simulatioin process
     """
-
-    # Check if Seasonality is taken into consideration
-    if seasonality == True:
-        output_directory = "sarimax_simulation_results"
-    else:
-        output_directory = "arimax_simulation_results"
-
     biweekly_data_path = os.path.join(DATA_PATH, "biweekly_data_1")
     monthly_data_path = os.path.join(DATA_PATH, "monthly_data_1")
-    output_path = os.path.join(DATA_PATH, output_directory)
-    if not os.path.exists(output_path):
-        os.mkdir(output_path)
-        os.mkdir(os.path.join(output_path, "monthly_results"))
-        os.mkdir(os.path.join(output_path, "biweekly_results"))
+
 
     # List existing data files:
     biweekly_files = os.listdir(biweekly_data_path)
     monthly_files = os.listdir(monthly_data_path)
 
-    assessment_statistics = ['Simulation', 'MSE', 'MAE', 'RMSE']
     for i in range(len(biweekly_files)):
         if biweekly_files[i] == '.DS_Store':
             continue
         project = biweekly_files[i][:-4]
-        monthly_results_path = os.path.join(output_path, "monthly_results", f"{project}.csv")
-        biweekly_results_path = os.path.join(output_path, "biweekly_results", f"{project}.csv")
-
-
-        biweekly_assessment = pd.DataFrame(columns=assessment_statistics)
-        monthly_assessment = pd.DataFrame(columns=assessment_statistics)
-
-        # Check if the project has already been processed
-        if detect_existing_output(project=project, paths=[monthly_results_path, biweekly_results_path],
-                                  flag_num=i, files_num=len(biweekly_files), approach=f"{seasonality}-ARIMAX"):
-            print(f"> Project {project} already procesed for SARIMAX simulation")
-            continue
-
-
 
         # Runs the SARIMAX execution for the given project in biweekly format
         print(f"> Processing {project} for biweekly data")
@@ -621,21 +1036,24 @@ def ts_simulation_seasonal_f(seasonality):
                                           project_name=project,
                                           periodicity="monthly",
                                           seasonality=seasonality, steps=[1,3,6,12])
+        
+        # Check if either biweekly_statistics or monthly_statistics is None
+        if biweekly_statistics is None or monthly_statistics is None:
+            print(f"Skipping {project} due to simulation issues.")
+            continue
 
 
 
-        closest_sim_biwwekly = assess_closest_simulations(biweekly_statistics, biweekly_files, seasonality, periodicity="biweekly")
-        closest_sim_monthly = assess_closest_simulations(monthly_statistics, monthly_files, seasonality, periodicity="monthly")
+        closest_sim_biwwekly = assess_closest_simulations(biweekly_statistics, seasonality, project, periodicity="biweekly")
+        closest_sim_monthly = assess_closest_simulations(monthly_statistics, seasonality, project, periodicity="monthly")
 
+        #closest_sim_biwwekly = assess_and_rank_closest_simulations(biweekly_statistics, biweekly_files, seasonality, periodicity="biweekly")
+        #closest_sim_monthly = assess_and_rank_closest_simulations(monthly_statistics, monthly_files, seasonality, periodicity="monthly")
 
-        save_and_plot_results(
-            biweekly_statistics, biweekly_files, seasonality, closest_sim_biwwekly,
-            df_path=os.path.join(biweekly_data_path, biweekly_files[i]), periodicity="biweekly"
-        )
-        save_and_plot_results(
-            monthly_statistics, monthly_files, seasonality, closest_sim_monthly,
-            df_path=os.path.join(monthly_data_path, monthly_files[i]), periodicity="monthly"
-        )
+        save_and_plot_results(biweekly_statistics, project, seasonality, closest_sim_biwwekly, best_regressors_biweekly,
+                              df_path=os.path.join(biweekly_data_path, biweekly_files[i]), periodicity="biweekly")
+        save_and_plot_results(monthly_statistics, project, seasonality, closest_sim_monthly, best_regressors_monthly,
+                              df_path=os.path.join(monthly_data_path, monthly_files[i]), periodicity="monthly")
 
         if seasonality:
             print(f"> SARIMAX simulation for project <{project}> performed - {i+1}/{len(biweekly_files)}")
