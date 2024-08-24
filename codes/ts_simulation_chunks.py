@@ -115,13 +115,14 @@ def backward_modelling(df, periodicity, seasonality, output_flag=True):
     return best_model_cfg, round(best_aic, 2), best_regressors, output_flag
 
 
-def simulate_sqale_index_arima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps, index, simulations=50):
+def simulate_sqale_index_arima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps, index, simulations=30):
     """
-    Simulates the SQALE_INDEX based on the ARIMA model.
+    Simulates the SQALE_INDEX based on the SARIMA model.
     
     :param training_df: Training DataFrame with actual SQALE_INDEX and regressors
-    :param best_model_cfg: Best ARIMA model configuration obtained from backward_modelling
+    :param best_model_cfg: Best SARIMA model configuration obtained from backward_modelling
     :param simulations: Number of simulations to perform
+    :param steps: Number of steps to forecast beyond the training data length
     :return: DataFrame with actual and simulated SQALE_INDEX
     """
     results = {}
@@ -133,22 +134,14 @@ def simulate_sqale_index_arima_future_points(training_df, testing_df, best_model
 
 
     for steps in steps:
-        simulation_index = range(len(training_df), len(training_df) + steps)
+        last_index = training_df.index[-1]
+        simulation_index = range(last_index + 1, last_index + 1 + steps)
         simulated_results = pd.DataFrame(index=simulation_index, 
                                      columns=[f'Simulated_{i}' for i in range(simulations)])
 
-        # Prepare future exogenous values
-        #future_exog = np.tile(X_train_scaled.iloc[-1], (steps, 1))
+        # Generate future exogenous values for all simulations
+        future_exog_dict = build_future_exog(best_model_cfg, training_df, steps, simulations, best_regressors)
 
-        if testing_df.empty:
-            print('testing_df is empty')
-            future_exog = np.tile(X_train_scaled.iloc[-1], (steps, 1))
-        else:
-            # If testing_df provides future exogenous values, use them
-            future_exog = np.log1p(testing_df[best_regressors].iloc[:steps]).values
-
-        # Assuming you might use the last known exogenous values for future simulation steps
-        # If testing_df is not provided or is empty, use the last values from training_df
         
 
         for i in range(simulations):
@@ -161,6 +154,8 @@ def simulate_sqale_index_arima_future_points(training_df, testing_df, best_model
                 simulated_values = fitted_model.simulate(nsimulations=steps, anchor='end', initial_state=fitted_model.predicted_state[:, -1], exog=future_exog)
                 simulated_values = last_values + np.cumsum(simulated_values)  # Accumulate the simulation to follow the trend
                 simulated_results.iloc[:, i] = simulated_values'''
+                #Extract values from future_exog
+                future_exog = future_exog_dict[i].values
 
 
                 simulated_values = fitted_model.simulate(nsimulations=steps, anchor='end', initial_state=fitted_model.predicted_state[:, -1], exog=future_exog)
@@ -173,12 +168,47 @@ def simulate_sqale_index_arima_future_points(training_df, testing_df, best_model
                 print(f"> Error during simulation {i}: {str(e)}")
                 simulated_results[f'Simulated_{i}'] = np.nan
 
-        actual_df = pd.DataFrame({'Actual': y_train}, index=range(len(y_train)))
-        results[steps] = (actual_df, simulated_results)
+        actual_df = pd.DataFrame({'Actual': y_train}, index=index)
+
+        results[steps] = (actual_df, simulated_results, future_exog_dict)
     
     #actual_df = pd.DataFrame({'Actual': y_train}, index=range(len(y_train)))
 
     return results
+
+
+def build_future_exog(best_model_cfg, training_df, steps, simulations, best_regressors):
+    future_exog_dict = {}
+
+    # Apply np.log1p to the training data for the best regressors
+    training_df_log_transformed = training_df.copy()
+    training_df_log_transformed[best_regressors] = np.log1p(training_df[best_regressors])
+    
+    for i in range(simulations):
+        future_exog = pd.DataFrame(index=range(len(training_df), len(training_df) + steps))
+            
+        for column in best_regressors:  # Assuming the first two columns are not regressors
+            y_train = training_df_log_transformed[column].dropna()
+            if len(y_train) > 0:
+                model = ARIMA(y_train, enforce_stationarity=True, enforce_invertibility=True)
+                fitted_model = model.fit()
+                
+                simulated_values = fitted_model.simulate(nsimulations=steps, anchor='end', initial_state=fitted_model.predicted_state[:, -1])
+                
+                future_exog[column] = simulated_values
+
+        future_exog[future_exog < 0] = np.nan  # Optionally replace negative values with NaN
+        future_exog = future_exog.fillna(0)  # Optionally fill NaN values with 0
+
+   
+        future_exog = future_exog[best_regressors]
+        future_exog_dict[i] = future_exog
+
+
+    print(f"Future exogenous values for simulation {i}:")
+    print(future_exog_dict)
+    print(f':{steps}: <------------------>')
+    return future_exog_dict
 
 
 def simulate_sqale_index_sarima_future_points(training_df, testing_df, best_model_cfg, best_regressors, steps, index, simulations=30):
@@ -293,7 +323,7 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality,steps):
     df = pd.read_csv(df_path, encoding=encoding)
     df.COMMIT_DATE = pd.to_datetime(df.COMMIT_DATE)
     sqale_index = df.SQALE_INDEX.to_numpy()  # Dependent variable
-    split_point = round(len(sqale_index)*0.5)  # Initial data splitting. (75% for training)
+    split_point = round(len(sqale_index)*0.25)  # Initial data splitting. (75% for training)
     training_df = df.iloc[split_point:, :]
     print(training_df.tail(10))
     #training_df = df.iloc[:split_point, :]
