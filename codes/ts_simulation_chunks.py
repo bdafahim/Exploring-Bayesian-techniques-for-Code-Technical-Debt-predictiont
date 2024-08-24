@@ -323,7 +323,7 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality,steps):
     df = pd.read_csv(df_path, encoding=encoding)
     df.COMMIT_DATE = pd.to_datetime(df.COMMIT_DATE)
     sqale_index = df.SQALE_INDEX.to_numpy()  # Dependent variable
-    split_point = round(len(sqale_index)*0.25)  # Initial data splitting. (75% for training)
+    split_point = round(len(sqale_index)*0.75)  # Initial data splitting. (75% for training)
     training_df = df.iloc[split_point:, :]
     print(training_df.tail(10))
     #training_df = df.iloc[:split_point, :]
