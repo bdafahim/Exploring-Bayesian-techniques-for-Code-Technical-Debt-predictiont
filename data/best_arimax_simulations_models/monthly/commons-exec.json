@@ -12,7 +12,9 @@
             12
         ]
     ],
-    "best_aic": 2196.91,
+    "best_aic": [
+        2196.91
+    ],
     "best_regressors": [
         "RedundantThrowsDeclarationCheck",
         "S00117",
