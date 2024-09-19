@@ -290,7 +290,7 @@ def trigger_simulation(df_path, project_name, periodicity, seasonality,steps):
     training_df.COMMIT_DATE = pd.to_datetime(training_df.COMMIT_DATE)
     sqale_index = training_df.SQALE_INDEX.to_numpy()  # Dependent variable
     split_point = round(len(sqale_index)*0.8)  # Initial data splitting. (80% training 20% testing)
-    #training_df = df.iloc[:split_point, :]
+    training_df = df.iloc[:split_point, :]
     testing_df = pd.DataFrame()
 
     print(f'Backward modeleling started for project>>>>>--- {project_name}')

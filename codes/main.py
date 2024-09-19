@@ -16,11 +16,13 @@ from ts_modelling_speed import ts_models
 from related_work_speed import related_models
 from result_combiner import combine_results
 from ts_simulation_future import ts_simulation
+from bayesian_prediction import bayesian_dglm
+from bayesian_prediction_orbit import bayesian_orbit
 #from ts_simulation_chunks import ts_simulation_seasonal_f
 #from ts_simulation_regressor_combination import ts_simulation_seasonal_f
 #from ts_simulation_chunks_regressors import ts_simulation_seasonal_f
 
-from commons import SARIMAX, SIMULATION, SIMULATION_FUTURE_POINTS,  RELATED_WORK, ML_MODELS, COMBINE_RESULTS, PREPROCESSING
+from commons import SARIMAX, SIMULATION, SIMULATION_FUTURE_POINTS,  RELATED_WORK, ML_MODELS, COMBINE_RESULTS, PREPROCESSING, DGLM, ORBIT
 
 
 def main():
@@ -29,6 +31,11 @@ def main():
     if PREPROCESSING:
         #preprocessing()
         data_prepare()
+    
+    if DGLM:
+        bayesian_dglm(seasonality=True)
+    if ORBIT:
+        bayesian_orbit(seasonality=True)
 
     # SARIMAX modelling stage execution
     if SARIMAX:
