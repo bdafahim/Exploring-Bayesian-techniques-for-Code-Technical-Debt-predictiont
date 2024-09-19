@@ -85,11 +85,14 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
     models = {
         'DLT': DLT(seasonality=seasonality, response_col='SQALE_INDEX', date_col='COMMIT_DATE', estimator=ESTIMATOR_MAP, seed=8888, 
         global_trend_option='linear',prediction_percentiles=[5, 95], regressor_col=x_train_scaled.columns.tolist(), n_bootstrap_draws=1000,),
-        #'ETS': ETS(seasonality=seasonality, response_col='SQALE_INDEX', date_col='COMMIT_DATE', estimator='stan-map', seed=1, prediction_percentiles=[5, 95],),
+        'ETS': ETS(seasonality=seasonality, response_col='SQALE_INDEX', date_col='COMMIT_DATE', estimator='stan-map', seed=1, prediction_percentiles=[5, 95],),
         #'LGT': LGT(seasonality=seasonality, response_col='SQALE_INDEX', date_col='COMMIT_DATE', estimator='stan-map', seed=8888),
     }
 
-    results = []
+    all_results = []
+
+    # Create the output folder
+    base_path = os.path.join(DATA_PATH, 'ORBIT_ML')
 
     for model_name, model in models.items():
         print(f"Training {model_name}...")
@@ -117,27 +120,42 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
         print(f"{model_name} RMSE: {rmse:.2f}")
         print(f"{model_name} mse: {mse:.2f}%")
 
-        # Store results
-        results.append({
+        # Store results for the current model
+        result_data = {
             'Project': project_name,
             'Model': model_name,
             'MAE': mae,
             'MAPE': mape_value,
             'RMSE': rmse,
-            'mse': mse
-        })
+            'MSE': mse
+        }
 
-        # Plot predictions vs actuals
-        '''plt.figure(figsize=(12, 6))
-        plt.plot(testing_df['COMMIT_DATE'], actual, label='Actual', marker='o')
-        plt.plot(testing_df['COMMIT_DATE'], predicted, label='Predicted', marker='o')
-        plt.xlabel('Commit Date')
-        plt.ylabel('SQALE_INDEX')
-        plt.title(f'{model_name} Predictions vs Actuals')
-        plt.legend()
-        plt.show()'''
+        # Append the result to the global list for cumulative results
+        all_results.append(result_data)
 
-        fig, ax = plt.subplots(1,1, figsize=(1280/96, 720/96))
+        output_folder = os.path.join(DATA_PATH, base_path, f"{model_name}_Result", periodicity)
+        os.makedirs(output_folder, exist_ok=True)
+
+        # Create a DataFrame to display all results
+        results_df = pd.DataFrame([result_data])
+        print(f'Results for {periodicity} data')
+        print(results_df)
+
+        # Save result_df as a CSV file
+        csv_output_path = os.path.join(output_folder, "assessment.csv")
+
+        # Append to CSV instead of overwriting
+        if not os.path.isfile(csv_output_path):
+            # If the file doesn't exist, write with header
+            results_df.to_csv(csv_output_path, mode='w', index=False, header=True)
+        else:
+            # If the file exists, append without writing the header
+            results_df.to_csv(csv_output_path, mode='a', index=False, header=False)
+
+        print(f"Results for {model_name} saved in {output_folder}")
+
+
+        '''fig, ax = plt.subplots(1,1, figsize=(1280/96, 720/96))
         ax.plot(p['COMMIT_DATE'], p['SQALE_INDEX'], label='actual')
         ax.plot(p['COMMIT_DATE'], p['prediction'], label='prediction')
         if 'prediction_5' in p.columns and 'prediction_95' in p.columns:
@@ -150,16 +168,7 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
         ax.legend()
         plt.show()
 
-        '''residuals = actual - predicted
-        plt.figure(figsize=(12, 6))
-        plt.plot(testing_df['COMMIT_DATE'], residuals, label='Residuals', marker='o')
-        plt.axhline(0, color='red', linestyle='--')
-        plt.xlabel('Commit Date')
-        plt.ylabel('Residuals')
-        plt.title(f'{model_name} Residuals Over Time')
-        plt.legend()
-        plt.show()'''
-
+      
         # Plot forecast vs actuals
         plot_predicted_data(
             training_actual_df=training_df,
@@ -167,19 +176,23 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
             date_col='COMMIT_DATE',
             actual_col='SQALE_INDEX',
             title=f'Prediction with {model_name}'
-        )
+        )'''
 
-    # Create a DataFrame to display all results
-    results_df = pd.DataFrame(results)
-    print(f'Results for {periodicity} data')
-    print(results_df)
+    if all_results:
+        final_results_df = pd.DataFrame(all_results)
+        print("Final cumulative results:")
+        print(final_results_df)
+        output_folder = os.path.join(DATA_PATH, base_path, f"All model Result", periodicity)
+        os.makedirs(output_folder, exist_ok=True)
+        
 
-    # Create the output folder
-    output_folder = os.path.join(DATA_PATH, f"{model_name}_Result", periodicity)
-    os.makedirs(output_folder, exist_ok=True)
-
-    # Save result_df as a CSV file
-    csv_output_path = os.path.join(output_folder, "assessment.csv")
-    results_df.to_csv(csv_output_path, index=False)
-
-    print(f"Results saved to {csv_output_path}")
+        # Save result_df as a CSV file
+        csv_output_path = os.path.join(output_folder, "assessment.csv")
+        if not os.path.isfile(csv_output_path):
+            final_results_df.to_csv(csv_output_path, mode='w', index=False, header=True)
+        else:
+            final_results_df.to_csv(csv_output_path, mode='a', index=False, header=False)
+    else:
+        print("No results were generated.")
+    
+    return all_results, result_data
