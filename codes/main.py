@@ -17,7 +17,7 @@ from related_work_speed import related_models
 from result_combiner import combine_results
 from ts_simulation_future import ts_simulation
 from bayesian_prediction import bayesian_dglm
-from bayesian_prediction_orbit import bayesian_orbit
+from bayesian_prediction_orbit_DLT import bayesian_orbit
 #from ts_simulation_chunks import ts_simulation_seasonal_f
 #from ts_simulation_regressor_combination import ts_simulation_seasonal_f
 #from ts_simulation_chunks_regressors import ts_simulation_seasonal_f
@@ -35,7 +35,7 @@ def main():
     if DGLM:
         bayesian_dglm(seasonality=True)
     if ORBIT:
-        bayesian_orbit(seasonality=True)
+        bayesian_orbit()
 
     # SARIMAX modelling stage execution
     if SARIMAX:
