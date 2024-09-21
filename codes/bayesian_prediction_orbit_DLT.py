@@ -1,67 +1,58 @@
 import os
 import pandas as pd
 import numpy as np
-from orbit.models import DLT, ETS, LGT, KTR
-from orbit.diagnostics.metrics import smape
-from orbit.diagnostics.plot import plot_predicted_data
-from orbit.forecaster import Forecaster
+from orbit.models import DLT
+from sklearn.metrics import mean_absolute_error
 from commons import DATA_PATH
-from sklearn.metrics import mean_absolute_error, mean_squared_error
-from statsmodels.stats.stattools import durbin_watson
-from statsmodels.graphics.tsaplots import plot_acf
-import matplotlib.pyplot as plt
-from modules import MAPE, RMSE, MAE, MSE, check_encoding, detect_existing_output
+from modules import MAPE, RMSE, MAE, MSE
 
 
+# Define the hypertuning function for DLT model (without penalty tuning)
 def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seasonality):
-    # Define the hyperparameter grid
+    # Define the hyperparameter grid (without penalties)
     trend_options = ['linear', 'loglinear', 'flat', 'logistic']
     estimators = ['stan-map', 'stan-mcmc']
-    penalties = [None, 0.01, 0.1, 1.0]  # Regularization penalties
 
     best_mae = float('inf')
     best_model = None
     best_config = None
 
-    # Iterate over each combination of trend, estimator, and penalty
+    # Iterate over each combination of trend and estimator
     for trend in trend_options:
         for estimator in estimators:
-            for penalty in penalties:
-                # Define the model with the current set of hyperparameters
-                print(f"Training with trend={trend}, estimator={estimator}, penalty={penalty}")
-                
-                model = DLT(
-                    seasonality=seasonality,
-                    response_col='SQALE_INDEX',
-                    date_col='COMMIT_DATE',
-                    estimator=estimator,
-                    global_trend_option=trend,
-                    seed=8888,
-                    regressor_col=x_train.columns.tolist(),
-                    n_bootstrap_draws=1000,
-                    regressor_sign=[penalty] * len(x_train.columns) if penalty is not None else None
-                )
-                
-                # Fit the model
-                model.fit(df=training_df)
-                
-                # Predict and calculate MAE
-                predicted_df = model.predict(df=testing_df)
-                predicted = predicted_df['prediction'].values
-                
-                mae = mean_absolute_error(y_test, predicted)
-                
-                print(f"MAE for trend={trend}, estimator={estimator}, penalty={penalty}: {mae:.2f}")
-                
-                # Check if the current model is better
-                if mae < best_mae:
-                    best_mae = mae
-                    best_model = model
-                    best_config = {
-                        'trend': trend,
-                        'estimator': estimator,
-                        'penalty': penalty
-                    }
+            # Define the model with the current set of hyperparameters
+            print(f"Training with trend={trend}, estimator={estimator}")
+            
+            model = DLT(
+                seasonality=seasonality,
+                response_col='SQALE_INDEX',
+                date_col='COMMIT_DATE',
+                estimator=estimator,
+                global_trend_option=trend,
+                seed=8888,
+                regressor_col=x_train.columns.tolist(),
+                n_bootstrap_draws=1000
+            )
+            
+            # Fit the model
+            model.fit(df=training_df)
+            
+            # Predict and calculate MAE
+            predicted_df = model.predict(df=testing_df)
+            predicted = predicted_df['prediction'].values
+            
+            mae = mean_absolute_error(y_test, predicted)
+            
+            print(f"MAE for trend={trend}, estimator={estimator}: {mae:.2f}")
+            
+            # Check if the current model is better
+            if mae < best_mae:
+                best_mae = mae
+                best_model = model
+                best_config = {
+                    'trend': trend,
+                    'estimator': estimator
+                }
 
     print(f"Best configuration: {best_config} with MAE: {best_mae:.2f}")
     
@@ -123,7 +114,6 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
         'Model': 'DLT',
         'Trend': best_config['trend'],
         'Estimator': best_config['estimator'],
-        'Penalty': best_config['penalty'],
         'MAE': mae,
         'MAPE': mape_value,
         'RMSE': rmse,
