@@ -5,59 +5,106 @@ from orbit.models import DLT
 from sklearn.metrics import mean_absolute_error
 from commons import DATA_PATH
 from modules import MAPE, RMSE, MAE, MSE
+from sklearn.linear_model import Lasso
+from sklearn.preprocessing import StandardScaler
+import itertools
 
 
-# Define the hypertuning function for DLT model (without penalty tuning)
-def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seasonality):
-    # Define the hyperparameter grid (without penalties)
-    trend_options = ['linear', 'loglinear', 'flat', 'logistic']
-    estimators = ['stan-map', 'stan-mcmc']
 
-    best_mae = float('inf')
+
+
+# Function to perform Lasso Regression for feature selection
+def select_features_with_lasso(X, y, alpha=0.01):
+    # Standardize the features (important for Lasso)
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    
+    # Lasso Regression for feature selection
+    lasso = Lasso(alpha=alpha)
+    lasso.fit(X_scaled, y)
+    
+    # Select features with non-zero coefficients
+    selected_features = np.where(lasso.coef_ != 0)[0]
+    important_features = X.columns[selected_features]
+    
+    print(f"Selected Features: {important_features.tolist()}")
+    
+    return important_features
+
+
+# Backward modeling for feature selection
+def hyper_tune_with_backward_select_regressors(training_df, y_train, x_train, y_test, testing_df, seasonality):
+    best_mae = np.inf
     best_model = None
     best_config = None
+    best_regressors = None
 
-    # Iterate over each combination of trend and estimator
-    for trend in trend_options:
-        for estimator in estimators:
-            # Define the model with the current set of hyperparameters
-            print(f"Training with trend={trend}, estimator={estimator}")
-            
-            model = DLT(
-                seasonality=seasonality,
-                response_col='SQALE_INDEX',
-                date_col='COMMIT_DATE',
-                estimator=estimator,
-                global_trend_option=trend,
-                seed=8888,
-                regressor_col=x_train.columns.tolist(),
-                n_bootstrap_draws=1000
-            )
-            
-            # Fit the model
-            model.fit(df=training_df)
-            
-            # Predict and calculate MAE
-            predicted_df = model.predict(df=testing_df)
-            predicted = predicted_df['prediction'].values
-            
-            mae = mean_absolute_error(y_test, predicted)
-            
-            print(f"MAE for trend={trend}, estimator={estimator}: {mae:.2f}")
-            
-            # Check if the current model is better
-            if mae < best_mae:
-                best_mae = mae
-                best_model = model
-                best_config = {
-                    'trend': trend,
-                    'estimator': estimator
-                }
+    current_regressors = x_train.columns.tolist()
 
-    print(f"Best configuration: {best_config} with MAE: {best_mae:.2f}")
-    
-    # Return the best model and configuration
-    return best_model, best_config
+    while current_regressors:
+        print(f"> REMAINING REGRESSORS: {len(current_regressors)}")
+
+        if len(current_regressors) > 1:
+            mae_with_regressor_removed = []
+
+            for regressor in current_regressors:
+                print(f"> Trying with regressor removed: {regressor}")
+                try_regressors = current_regressors.copy()
+                try_regressors.remove(regressor)
+
+                try:
+                    # Iterate over trend options and estimators
+                    for trend in ['linear', 'loglinear', 'flat', 'logistic']:
+                        for estimator in ['stan-map', 'stan-mcmc']:
+                            # Define and fit the model
+                            print(f"Training with trend={trend}, estimator={estimator}, regressors={try_regressors}")
+                            model = DLT(
+                                seasonality=seasonality,
+                                response_col='SQALE_INDEX',
+                                date_col='COMMIT_DATE',
+                                estimator=estimator,
+                                global_trend_option=trend,
+                                seed=8888,
+                                regressor_col=try_regressors,
+                                n_bootstrap_draws=1000
+                            )
+
+                            model.fit(df=training_df)
+
+                            # Predict and calculate MAE
+                            predicted_df = model.predict(df=testing_df)
+                            predicted = predicted_df['prediction'].values
+                            mae = mean_absolute_error(y_test, predicted)
+
+                            print(f"MAE for trend={trend}, estimator={estimator}, regressors={try_regressors}: {mae:.2f}")
+
+                            mae_with_regressor_removed.append((mae, regressor))
+
+                            # Check if this is the best model
+                            if mae < best_mae:
+                                best_mae = mae
+                                best_model = model
+                                best_config = {
+                                    'trend': trend,
+                                    'estimator': estimator,
+                                }
+                                best_regressors = try_regressors.copy()
+
+                except Exception as e:
+                    print(f"> Error when trying model excluding {regressor}: {str(e)}")
+
+            # Sort based on MAE and remove the regressor with the lowest MAE impact
+            mae_with_regressor_removed.sort()
+            regressor_to_remove = mae_with_regressor_removed[0][1]
+            current_regressors.remove(regressor_to_remove)
+            print(f"Regressor {regressor_to_remove} removed. Remaining regressors: {current_regressors}")
+
+        else:
+            print("> Only one regressor left, stopping.")
+            break
+
+    print(f"Best model found with regressors: {best_regressors} and MAE: {best_mae:.2f}")
+    return best_model, best_config, best_regressors
 
 
 # Main method to trigger the prediction process
@@ -81,7 +128,7 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
     x_test = testing_df.drop(columns=['COMMIT_DATE', 'SQALE_INDEX'])
 
     # Hypertune the DLT model
-    best_model, best_config = hypertune_dlt_model(
+    best_model, best_config, important_features = hyper_tune_with_backward_select_regressors(
         training_df=training_df, 
         y_train=y_train, 
         x_train=x_train, 
@@ -90,8 +137,12 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
         seasonality=seasonality
     )
 
+     # Ensure COMMIT_DATE is included in the DataFrame used for prediction along with important features
+    test_df_for_prediction = testing_df[['COMMIT_DATE']].copy()  # Ensure COMMIT_DATE is present
+    test_df_for_prediction = pd.concat([test_df_for_prediction, testing_df[important_features]], axis=1)
+
     # Use the best model for final predictions
-    predicted_df = best_model.predict(df=testing_df)
+    predicted_df = best_model.predict(df=test_df_for_prediction)
     
     actual = y_test
     predicted = predicted_df['prediction'].values
