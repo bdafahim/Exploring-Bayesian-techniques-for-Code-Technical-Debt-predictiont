@@ -145,10 +145,10 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
     #important_features = select_features_with_bma(x_train, y_train)
 
     # Perform feature selection using XGBoost
-    #important_features = select_features_with_xgboost(x_train, y_train)
+    important_features = select_features_with_xgboost(x_train, y_train)
 
     # Perform feature selection using Random Forest
-    important_features = select_features_with_random_forest(x_train, y_train)
+    #important_features = select_features_with_random_forest(x_train, y_train)
 
 
     # Define the hyperparameter grid (without penalties)
