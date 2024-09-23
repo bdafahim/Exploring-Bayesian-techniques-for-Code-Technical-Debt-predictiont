@@ -136,16 +136,16 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
 
 
     # Perform feature selection using Lasso
-    important_features = select_features_with_lasso(x_train, y_train)
+    #important_features = select_features_with_lasso(x_train, y_train)
 
     # Perform feature selection using RFE
     #important_features = select_features_with_rfe(x_train, y_train, num_features=10)
 
     # Perform feature selection using BMA
-   # important_features = select_features_with_bma(x_train, y_train)
+    important_features = select_features_with_bma(x_train, y_train)
 
     # Perform feature selection using XGBoost
-    #important_features = select_features_with_xgboost(x_train, y_train, num_features=10)
+    #important_features = select_features_with_xgboost(x_train, y_train)
 
     # Perform feature selection using Random Forest
     #important_features = select_features_with_random_forest(x_train, y_train)
