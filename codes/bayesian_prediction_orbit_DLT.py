@@ -8,10 +8,40 @@ from modules import MAPE, RMSE, MAE, MSE
 from sklearn.linear_model import Lasso
 from sklearn.preprocessing import StandardScaler
 import itertools
+from sklearn.feature_selection import RFE
+from sklearn.linear_model import LinearRegression
+from sklearn.feature_selection import SelectFromModel
+from sklearn.linear_model import BayesianRidge
+from xgboost import XGBRegressor
+from sklearn.ensemble import RandomForestRegressor
+from statsmodels.tsa.stattools import grangercausalitytests
 
 
+# Function to remove constant columns
+def remove_constant_columns(X):
+    return X.loc[:, (X != X.iloc[0]).any()]  # Keep columns where not all values are the same
 
 
+# Granger causality test function to identify useful exogenous variables
+def granger_causality_tests(X, y, max_lag=2, significance_level=0.05):
+    selected_features = []
+    
+    # Remove constant columns before performing Granger causality
+    X = remove_constant_columns(X)
+
+    for column in X.columns:
+        try:
+            test_result = grangercausalitytests(X[[column]].join(y), max_lag, verbose=False)
+            
+            # Check if any of the lags' p-values are below the significance threshold
+            p_values = [round(test_result[lag][0]['ssr_ftest'][1], 4) for lag in range(1, max_lag+1)]
+            if any(p_val < significance_level for p_val in p_values):
+                selected_features.append(column)
+        except Exception as e:
+            print(f"Error in Granger causality test for column {column}: {e}")
+    
+    print(f"Selected features based on Granger causality: {selected_features}")
+    return selected_features
 
 # Function to perform Lasso Regression for feature selection
 def select_features_with_lasso(X, y, alpha=0.01):
@@ -30,6 +60,240 @@ def select_features_with_lasso(X, y, alpha=0.01):
     print(f"Selected Features: {important_features.tolist()}")
     
     return important_features
+
+# Function to perform Recursive Feature Elimination (RFE) for feature selection
+def select_features_with_rfe(X, y, num_features):
+    # Use a basic linear model to perform RFE
+    model = LinearRegression()
+    
+    # Perform RFE to select the top 'num_features' most important features
+    rfe = RFE(model, n_features_to_select=num_features)
+    rfe.fit(X, y)
+    
+    # Select features with non-zero importance
+    selected_features = X.columns[rfe.support_]
+    
+    print(f"Selected Features using RFE: {selected_features.tolist()}")
+    
+    return selected_features
+
+# Bayesian Model Averaging (BMA) for Feature Selection
+def select_features_with_bma(X, y, num_features=None):
+    # Bayesian Ridge as a proxy for BMA-like behavior
+    model = BayesianRidge()
+    
+    # Fit the model
+    model.fit(X, y)
+    
+    # Extract feature coefficients (weights)
+    coefficients = np.abs(model.coef_)
+    
+    # Sort features by their absolute coefficient values (important for selection)
+    feature_importance = np.argsort(-coefficients)
+    
+    # Select top 'num_features' based on coefficients, or all non-zero coefficients if num_features is not provided
+    if num_features is not None:
+        selected_indices = feature_importance[:num_features]
+    else:
+        selected_indices = feature_importance[coefficients > 0]
+    
+    # Select the feature names
+    selected_features = X.columns[selected_indices]
+    
+    print(f"Selected Features using BMA: {selected_features.tolist()}")
+    
+    return selected_features
+
+
+# XGBoost for Feature Selection
+def select_features_with_xgboost(X, y, num_features=None):
+    # Fit an XGBoost regressor
+    model = XGBRegressor(objective='reg:squarederror', n_estimators=100, random_state=8888)
+    model.fit(X, y)
+    
+    # Extract feature importance
+    feature_importances = model.feature_importances_
+    
+    # Rank features based on importance
+    feature_indices = np.argsort(-feature_importances)
+    
+    # Select the top 'num_features' if specified, or all non-zero features otherwise
+    if num_features is not None:
+        selected_indices = feature_indices[:num_features]
+    else:
+        selected_indices = feature_indices[feature_importances > 0]
+    
+    # Select the feature names
+    selected_features = X.columns[selected_indices]
+    
+    print(f"Selected Features using XGBoost: {selected_features.tolist()}")
+    
+    return selected_features
+
+# Random Forest for Feature Selection
+def select_features_with_random_forest(X, y, num_features=None):
+    # Fit a RandomForest regressor
+    model = RandomForestRegressor(n_estimators=100, random_state=8888)
+    model.fit(X, y)
+    
+    # Extract feature importance
+    feature_importances = model.feature_importances_
+    
+    # Rank features based on importance
+    feature_indices = np.argsort(-feature_importances)
+    
+    # Select the top 'num_features' if specified, or all non-zero features otherwise
+    if num_features is not None:
+        selected_indices = feature_indices[:num_features]
+    else:
+        selected_indices = feature_indices[feature_importances > 0]
+    
+    # Select the feature names
+    selected_features = X.columns[selected_indices]
+    
+    print(f"Selected Features using Random Forest: {selected_features.tolist()}")
+    
+    return selected_features
+
+
+# Define the hypertuning function for DLT model after Granger causality and Lasso
+def hypertune_dlt_model_with_granger_casuality(training_df, y_train, x_train, y_test, testing_df, seasonality, max_lag=2, lasso_alpha=0.01):
+
+    # Perform Granger causality tests
+    granger_selected_features = granger_causality_tests(x_train, training_df[['SQALE_INDEX']], max_lag=max_lag)
+
+    # If no features pass Granger causality, use all features
+    if len(granger_selected_features) == 0:
+        print("No features selected from Granger causality tests. Using all features.")
+        granger_selected_features = x_train.columns.tolist()
+    
+    # Subset the data to only include Granger-selected features
+    x_train_filtered = x_train[granger_selected_features]
+    x_test_filtered = testing_df[granger_selected_features]
+
+    # Perform Lasso for further feature selection
+    important_features = select_features_with_lasso(x_train_filtered, y_train, alpha=lasso_alpha)
+
+    # Define the hyperparameter grid
+    trend_options = ['linear', 'loglinear', 'flat', 'logistic']
+    estimators = ['stan-map', 'stan-mcmc']
+
+    best_mae = float('inf')
+    best_model = None
+    best_config = None
+
+    # Iterate over each combination of trend and estimator
+    for trend in trend_options:
+        for estimator in estimators:
+            # Define the model with the current set of hyperparameters
+            print(f"Training with trend={trend}, estimator={estimator}, selected features: {important_features.tolist()}")
+            
+            model = DLT(
+                seasonality=seasonality,
+                response_col='SQALE_INDEX',
+                date_col='COMMIT_DATE',
+                estimator=estimator,
+                global_trend_option=trend,
+                seed=8888,
+                regressor_col=important_features.tolist(),
+                n_bootstrap_draws=1000
+            )
+            
+            # Fit the model
+            model.fit(df=training_df)
+            
+            # Predict and calculate MAE
+            predicted_df = model.predict(df=testing_df)
+            predicted = predicted_df['prediction'].values
+            
+            mae = mean_absolute_error(y_test, predicted)
+            
+            print(f"MAE for trend={trend}, estimator={estimator}, features: {important_features.tolist()}: {mae:.2f}")
+            
+            # Check if the current model is better
+            if mae < best_mae:
+                best_mae = mae
+                best_model = model
+                best_config = {
+                    'trend': trend,
+                    'estimator': estimator
+                }
+
+    print(f"Best configuration: {best_config} with MAE: {best_mae:.2f}")
+    
+    # Return the best model and configuration
+    return best_model, best_config, important_features
+
+# Define the hypertuning function for DLT model
+def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seasonality):
+
+
+    # Perform feature selection using Lasso
+    #important_features = select_features_with_lasso(x_train, y_train)
+
+    # Perform feature selection using RFE
+    #important_features = select_features_with_rfe(x_train, y_train, num_features=10)
+
+    # Perform feature selection using BMA
+    #important_features = select_features_with_bma(x_train, y_train, num_features=10)
+
+    # Perform feature selection using XGBoost
+    #important_features = select_features_with_xgboost(x_train, y_train, num_features=10)
+
+    # Perform feature selection using Random Forest
+    important_features = select_features_with_random_forest(x_train, y_train)
+
+
+    # Define the hyperparameter grid (without penalties)
+    trend_options = ['linear', 'loglinear', 'flat', 'logistic']
+    estimators = ['stan-map', 'stan-mcmc']
+
+    best_mae = float('inf')
+    best_model = None
+    best_config = None
+
+    # Iterate over each combination of trend and estimator
+    for trend in trend_options:
+        for estimator in estimators:
+            # Define the model with the current set of hyperparameters
+            print(f"Training with trend={trend}, estimator={estimator}")
+            
+            model = DLT(
+                seasonality=seasonality,
+                response_col='SQALE_INDEX',
+                date_col='COMMIT_DATE',
+                estimator=estimator,
+                global_trend_option=trend,
+                seed=8888,
+                regressor_col=important_features.tolist(),
+                n_bootstrap_draws=1000
+            )
+            
+            # Fit the model
+            model.fit(df=training_df)
+            
+            # Predict and calculate MAE
+            predicted_df = model.predict(df=testing_df)
+            predicted = predicted_df['prediction'].values
+            
+            mae = mean_absolute_error(y_test, predicted)
+            
+            print(f"MAE for trend={trend}, estimator={estimator}: {mae:.2f}")
+            
+            # Check if the current model is better
+            if mae < best_mae:
+                best_mae = mae
+                best_model = model
+                best_config = {
+                    'trend': trend,
+                    'estimator': estimator
+                }
+
+    print(f"Best configuration: {best_config} with MAE: {best_mae:.2f}")
+    
+    # Return the best model and configuration
+    return best_model, best_config, important_features
+
 
 
 # Backward modeling for feature selection
@@ -128,7 +392,7 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
     x_test = testing_df.drop(columns=['COMMIT_DATE', 'SQALE_INDEX'])
 
     # Hypertune the DLT model
-    best_model, best_config, important_features = hyper_tune_with_backward_select_regressors(
+    best_model, best_config, important_features = hypertune_dlt_model_with_granger_casuality(
         training_df=training_df, 
         y_train=y_train, 
         x_train=x_train, 
