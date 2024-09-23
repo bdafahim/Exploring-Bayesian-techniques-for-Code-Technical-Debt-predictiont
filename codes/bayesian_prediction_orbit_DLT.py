@@ -136,13 +136,13 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
 
 
     # Perform feature selection using Lasso
-    #important_features = select_features_with_lasso(x_train, y_train)
+    important_features = select_features_with_lasso(x_train, y_train)
 
     # Perform feature selection using RFE
     #important_features = select_features_with_rfe(x_train, y_train, num_features=10)
 
     # Perform feature selection using BMA
-    important_features = select_features_with_bma(x_train, y_train)
+   # important_features = select_features_with_bma(x_train, y_train)
 
     # Perform feature selection using XGBoost
     #important_features = select_features_with_xgboost(x_train, y_train, num_features=10)
@@ -360,41 +360,48 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
 
 # Example function call
 def bayesian_orbit():
-    biweekly_data_path = os.path.join(DATA_PATH, "biweekly_data_1")
-    monthly_data_path = os.path.join(DATA_PATH, "monthly_data_1")
-    complete_data_path = os.path.join(DATA_PATH, "complete_data_1")
+    biweekly_data_path = os.path.join(DATA_PATH, "biweekly_data")
+    monthly_data_path = os.path.join(DATA_PATH, "monthly_data")
+    complete_data_path = os.path.join(DATA_PATH, "complete_data")
 
     biweekly_files = os.listdir(biweekly_data_path) 
     monthly_files = os.listdir(monthly_data_path)
     complete_files = os.listdir(complete_data_path)
 
-    for i in range(len(biweekly_files)):
-        if biweekly_files[i] == '.DS_Store':
+    # Process biweekly data
+    for biweekly_file in biweekly_files:
+        if biweekly_file == '.DS_Store':
             continue
-        project = biweekly_files[i][:-4]
-
-        # Process biweekly data
+        project = biweekly_file[:-4]
         print(f"> Processing {project} for biweekly data")
         method_biweekly = trigger_prediction(
-            df_path=os.path.join(biweekly_data_path, biweekly_files[i]),
+            df_path=os.path.join(biweekly_data_path, biweekly_file),
             project_name=project,
             periodicity="biweekly",
             seasonality=26
         )
 
-        # Process monthly data
+    # Process monthly data
+    for monthly_file in monthly_files:
+        if monthly_file == '.DS_Store':
+            continue
+        project = monthly_file[:-4]
         print(f"> Processing {project} for monthly data")
         method_monthly = trigger_prediction(
-            df_path=os.path.join(monthly_data_path, monthly_files[i]),
+            df_path=os.path.join(monthly_data_path, monthly_file),
             project_name=project,
             periodicity="monthly",
             seasonality=12
         )
 
-        # Process complete data
+    # Process complete data
+    for complete_file in complete_files:
+        if complete_file == '.DS_Store':
+            continue
+        project = complete_file[:-4]
         print(f"> Processing {project} for complete data")
         method_complete = trigger_prediction(
-            df_path=os.path.join(complete_data_path, complete_files[i]),
+            df_path=os.path.join(complete_data_path, complete_file),
             project_name=project,
             periodicity="complete",
             seasonality=None
