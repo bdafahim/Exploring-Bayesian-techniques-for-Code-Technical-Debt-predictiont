@@ -25,8 +25,8 @@ def main():
     if DGLM:
         bayesian_dglm(seasonality=True)
     if ORBIT:
-        #bayesian_orbit()
-        bayesian_orbit_ets()
+        bayesian_orbit()
+        #bayesian_orbit_ets()
 
 
 if __name__ == '__main__':

@@ -15,6 +15,8 @@ from sklearn.linear_model import BayesianRidge
 from xgboost import XGBRegressor
 from sklearn.ensemble import RandomForestRegressor
 from statsmodels.tsa.stattools import grangercausalitytests
+import json
+
 
 
 # Function to perform Lasso Regression for feature selection
@@ -33,7 +35,7 @@ def select_features_with_lasso(X, y, alpha=0.01):
     
     print(f"Selected Features: {important_features.tolist()}")
     
-    return important_features
+    return important_features, 'L1'
 
 # Function to perform Recursive Feature Elimination (RFE) for feature selection
 def select_features_with_rfe(X, y, num_features):
@@ -49,7 +51,7 @@ def select_features_with_rfe(X, y, num_features):
     
     print(f"Selected Features using RFE: {selected_features.tolist()}")
     
-    return selected_features
+    return selected_features, 'RFE'
 
 # Bayesian Model Averaging (BMA) for Feature Selection
 def select_features_with_bma(X, y, num_features=None):
@@ -76,7 +78,7 @@ def select_features_with_bma(X, y, num_features=None):
     
     print(f"Selected Features using BMA: {selected_features.tolist()}")
     
-    return selected_features
+    return selected_features, 'BMA'
 
 
 # XGBoost for Feature Selection
@@ -102,7 +104,7 @@ def select_features_with_xgboost(X, y, num_features=None):
     
     print(f"Selected Features using XGBoost: {selected_features.tolist()}")
     
-    return selected_features
+    return selected_features, 'XGBoost'
 
 # Random Forest for Feature Selection
 def select_features_with_random_forest(X, y, num_features=None):
@@ -127,28 +129,46 @@ def select_features_with_random_forest(X, y, num_features=None):
     
     print(f"Selected Features using Random Forest: {selected_features.tolist()}")
     
-    return selected_features
+    return selected_features, 'RandomForest'
 
 
+def remove_unwanted_features(features, unwanted=['Unnamed: 0']):
+    """
+    Removes unwanted features from the list of selected features.
+    
+    Args:
+        features: List of selected features.
+        unwanted: List of unwanted feature names to remove.
+        
+    Returns:
+        List of features with unwanted features removed.
+    """
+    cleaned_features = [feature for feature in features if feature not in unwanted]
+    print(f"Cleaned Features: {cleaned_features}")
+    return cleaned_features
 
 # Define the hypertuning function for DLT model
 def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seasonality):
 
 
     # Perform feature selection using Lasso
-    #important_features = select_features_with_lasso(x_train, y_train)
+    important_features, name = select_features_with_lasso(x_train, y_train)
 
     # Perform feature selection using RFE
-    #important_features = select_features_with_rfe(x_train, y_train, num_features=10)
+    #important_features, name = select_features_with_rfe(x_train, y_train, num_features=10)
 
     # Perform feature selection using BMA
-    #important_features = select_features_with_bma(x_train, y_train)
+    #important_features, name = select_features_with_bma(x_train, y_train)
 
     # Perform feature selection using XGBoost
-    important_features = select_features_with_xgboost(x_train, y_train)
+    #important_features, name = select_features_with_xgboost(x_train, y_train)
 
     # Perform feature selection using Random Forest
-    #important_features = select_features_with_random_forest(x_train, y_train)
+    #important_features, name = select_features_with_random_forest(x_train, y_train)
+
+    # Remove unwanted features like 'Unnamed: 0'
+    important_features = remove_unwanted_features(important_features)
+
 
 
     # Define the hyperparameter grid (without penalties)
@@ -172,7 +192,7 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
                 estimator=estimator,
                 global_trend_option=trend,
                 seed=8888,
-                regressor_col=important_features.tolist(),
+                regressor_col=important_features,
                 n_bootstrap_draws=1000
             )
             
@@ -199,83 +219,7 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
     print(f"Best configuration: {best_config} with MAE: {best_mae:.2f}")
     
     # Return the best model and configuration
-    return best_model, best_config, important_features
-
-
-
-# Backward modeling for feature selection
-def hyper_tune_with_backward_select_regressors(training_df, y_train, x_train, y_test, testing_df, seasonality):
-    best_mae = np.inf
-    best_model = None
-    best_config = None
-    best_regressors = None
-
-    current_regressors = x_train.columns.tolist()
-
-    while current_regressors:
-        print(f"> REMAINING REGRESSORS: {len(current_regressors)}")
-
-        if len(current_regressors) > 1:
-            mae_with_regressor_removed = []
-
-            for regressor in current_regressors:
-                print(f"> Trying with regressor removed: {regressor}")
-                try_regressors = current_regressors.copy()
-                try_regressors.remove(regressor)
-
-                try:
-                    # Iterate over trend options and estimators
-                    for trend in ['linear', 'loglinear', 'flat', 'logistic']:
-                        for estimator in ['stan-map', 'stan-mcmc']:
-                            # Define and fit the model
-                            print(f"Training with trend={trend}, estimator={estimator}, regressors={try_regressors}")
-                            model = DLT(
-                                seasonality=seasonality,
-                                response_col='SQALE_INDEX',
-                                date_col='COMMIT_DATE',
-                                estimator=estimator,
-                                global_trend_option=trend,
-                                seed=8888,
-                                regressor_col=try_regressors,
-                                n_bootstrap_draws=1000
-                            )
-
-                            model.fit(df=training_df)
-
-                            # Predict and calculate MAE
-                            predicted_df = model.predict(df=testing_df)
-                            predicted = predicted_df['prediction'].values
-                            mae = mean_absolute_error(y_test, predicted)
-
-                            print(f"MAE for trend={trend}, estimator={estimator}, regressors={try_regressors}: {mae:.2f}")
-
-                            mae_with_regressor_removed.append((mae, regressor))
-
-                            # Check if this is the best model
-                            if mae < best_mae:
-                                best_mae = mae
-                                best_model = model
-                                best_config = {
-                                    'trend': trend,
-                                    'estimator': estimator,
-                                }
-                                best_regressors = try_regressors.copy()
-
-                except Exception as e:
-                    print(f"> Error when trying model excluding {regressor}: {str(e)}")
-
-            # Sort based on MAE and remove the regressor with the lowest MAE impact
-            mae_with_regressor_removed.sort()
-            regressor_to_remove = mae_with_regressor_removed[0][1]
-            current_regressors.remove(regressor_to_remove)
-            print(f"Regressor {regressor_to_remove} removed. Remaining regressors: {current_regressors}")
-
-        else:
-            print("> Only one regressor left, stopping.")
-            break
-
-    print(f"Best model found with regressors: {best_regressors} and MAE: {best_mae:.2f}")
-    return best_model, best_config, best_regressors
+    return best_model, best_config, important_features, name
 
 
 # Main method to trigger the prediction process
@@ -299,7 +243,7 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
     x_test = testing_df.drop(columns=['COMMIT_DATE', 'SQALE_INDEX'])
 
     # Hypertune the DLT model
-    best_model, best_config, important_features = hypertune_dlt_model(
+    best_model, best_config, important_features, name = hypertune_dlt_model(
         training_df=training_df, 
         y_train=y_train, 
         x_train=x_train, 
@@ -343,7 +287,7 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
     }
 
     # Output path to save the results
-    base_path = os.path.join(DATA_PATH, 'ORBIT_ML', 'DLT_Result', periodicity)
+    base_path = os.path.join(DATA_PATH, f"ORBIT_ML_{name}", 'DLT_Result', periodicity)
     os.makedirs(base_path, exist_ok=True)
     csv_output_path = os.path.join(base_path, "assessment.csv")
 
@@ -354,7 +298,20 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
     else:
         results_df.to_csv(csv_output_path, mode='a', index=False, header=False)
 
+    # Save important features to JSON
+    features_base_path = os.path.join(base_path, 'best_regressors')
+    os.makedirs(features_base_path, exist_ok=True)
+    features_output_path = os.path.join(features_base_path, f"{project_name}.json")
+    features_data = {
+        "Project": project_name,
+        "best_regressors": important_features  # Convert important features to list for JSON format
+    }
+    
+    with open(features_output_path, 'w') as json_file:
+        json.dump(features_data, json_file, indent=4)  # Save the important features in JSON format with indentation
+
     print(f"Results for {project_name} saved in {base_path}")
+    print(f"Important features saved in {features_output_path}")
     return result_data
 
 
