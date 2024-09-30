@@ -23,7 +23,7 @@ def bayesian_pybsts(seasonality=True):
         project = biweekly_files[i][:-4]
 
 
-        pybats_dglm_biweekly = trigger_prediction(
+        pybsts_biweekly = trigger_prediction(
             df_path=os.path.join(biweekly_data_path, biweekly_files[i]),
             project_name=project,
             periodicity="biweekly",
@@ -38,7 +38,7 @@ def bayesian_pybsts(seasonality=True):
 
         # Process monthly data
         print(f"> Processing {project} for monthly data")
-        pybats_dglm_monthly = trigger_prediction(
+        pybsts_monthly = trigger_prediction(
             df_path=os.path.join(monthly_data_path, monthly_files[i]),
             project_name=project,
             periodicity="monthly",
@@ -53,7 +53,7 @@ def bayesian_pybsts(seasonality=True):
 
         # Process complete data
         print(f"> Processing {project} for complete data")
-        pybats_dglm_complete = trigger_prediction(
+        pybsts_complete = trigger_prediction(
             df_path=os.path.join(complete_data_path, complete_files[i]),
             project_name=project,
             periodicity="complete",
