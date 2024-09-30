@@ -8,12 +8,13 @@ import os
 
 from preprocessing import preprocessing
 from tsDataPreparation import data_prepare
-from bayesian_prediction import bayesian_dglm
 from bayesian_prediction_orbit_DLT import bayesian_orbit
 from bayesian_prediction_orbit_ETS import bayesian_orbit_ets
+from bayesian_pybats_dglm import bayesian_dglm
+from bayesian_prediction_pybsts import bayesian_pybsts
 
 
-from commons import SARIMAX, SIMULATION, SIMULATION_FUTURE_POINTS,  RELATED_WORK, ML_MODELS, COMBINE_RESULTS, PREPROCESSING, DGLM, ORBIT
+from commons import SARIMAX, SIMULATION, SIMULATION_FUTURE_POINTS,  RELATED_WORK, ML_MODELS, COMBINE_RESULTS, PREPROCESSING, DGLM, ORBIT, PYBSTS
 
 
 def main():
@@ -27,6 +28,8 @@ def main():
     if ORBIT:
         bayesian_orbit()
         #bayesian_orbit_ets()
+    if PYBSTS:
+        bayesian_pybsts()
 
 
 if __name__ == '__main__':
