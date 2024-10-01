@@ -12,6 +12,7 @@ from bayesian_prediction_orbit_DLT import bayesian_orbit
 from bayesian_prediction_orbit_ETS import bayesian_orbit_ets
 from bayesian_pybats_dglm import bayesian_dglm
 from bayesian_prediction_pybsts import bayesian_pybsts
+from bayesian_prediction_orbit_KTR import bayesian_orbit_ktr
 
 
 from commons import SARIMAX, SIMULATION, SIMULATION_FUTURE_POINTS,  RELATED_WORK, ML_MODELS, COMBINE_RESULTS, PREPROCESSING, DGLM, ORBIT, PYBSTS
@@ -26,8 +27,9 @@ def main():
     if DGLM:
         bayesian_dglm(seasonality=True)
     if ORBIT:
-        bayesian_orbit()
+        #bayesian_orbit()
         #bayesian_orbit_ets()
+        bayesian_orbit_ktr()
     if PYBSTS:
         bayesian_pybsts()
 
