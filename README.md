@@ -1,6 +1,6 @@
-# Replication package for PROMISE submission: *"Exploring the Seasonality Effect in the Code Technical Debt Prediction"*
+#  *"Technical Debt Prediction and Simulation"*
 
-This replication package contains all the Python code to conduct the data collection, preprocessing and analysis of this study.
+This package contains all the Python code to conduct the data collection, preprocessing and analysis of this study.
 
 ## Getting started
 
@@ -24,12 +24,13 @@ provides the initial data files obtained from the dataset specified in the paper
 The folder `../codes/` should contain the following files:
 ```commons.py```
 ```main.py```
-```ml_modelling.py```
-```ml_modelling_backward.py```
 ```modules.py```
-```related_work.py```
+```ts_simulation.py```
 ```related_work_speed.py```
 ```result_combiner.py```
+```ts_simulation_future.py```
+```ts_simulation_chunks.py```
+```ts_simulation_regressor_combination.py```
 ```ts_modelling.py```
 ```ts_modelling_speed.py```
 ```visualization.py```
