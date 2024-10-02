@@ -9,17 +9,137 @@ import matplotlib.pyplot as plt
 import logging
 from pybats.analysis import analysis
 from pybats.point_forecast import median
-from pybats.dcmm import dcmm
-from pybats.plot import plot_data_forecast
+from modules import MAPE, RMSE, MAE, MSE
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-def bayesian_dglm(seasonality=True):
+
+
+def bayes_forecast(iv, dv, periodicity, project_name):
+    if iv is None:
+        x = None
+    else:
+        x = iv.values
+
+    y = dv.values
+    k = 1
+    forecast_end = len(y) - 1
+    # Define the index where the forecast should start - beginning of the last 20% of the data
+    forecast_start = int(len(y) * 0.8)
+
+    # Set seasonal periods and components based on periodicity
+    if periodicity == "biweekly":
+        seas_periods = [26]
+        seas_harm_components = [[1, 2, 3]]
+    elif periodicity == "monthly":
+        seas_periods = [12]
+        seas_harm_components = [[1, 2]]
+    else:  # No seasonality for 'complete' datasets
+        seas_periods = []
+        seas_harm_components = []
+
+    # Define the model with PyBATS
+    mod, samples = analysis(Y=y, X=x, family='normal',  # Change family as per your data distribution
+                            forecast_start=forecast_start,
+                            forecast_end=forecast_end,
+                            k=k,
+                            ntrend=1,
+                            nsamps=5000,
+                            seasPeriods=seas_periods,  # Adjust based on seasonality
+                            seasHarmComponents=seas_harm_components,
+                            prior_length=4,
+                            deltrend=0.94,
+                            delregn=0.90,
+                            delVar=0.98,
+                            delSeas=0.98,
+                            rho=0.6)
+
+    forecast = median(samples)
+    credible_interval = 95
+    alpha = (100 - credible_interval) / 2
+    upper = np.percentile(samples, [100 - alpha], axis=0).reshape(-1)
+    lower = np.percentile(samples, [alpha], axis=0).reshape(-1)
+
+    # Define index for the last 20% of the data
+    test_start = int(len(y) * 0.8)
+
+    # Error metrics are calculated for the forecast period
+    mae = round(MAE(y[forecast_start:], forecast), 2)
+    mape_value = round(MAPE(y[forecast_start:], forecast), 2)
+    mse = round(MSE(y[forecast_start:], forecast), 2)
+    rmse = round(RMSE(y[forecast_start:], forecast), 2)
+
+    # Log the metrics 
+    print(f"Final MAE: {mae:.2f}")
+    print(f"Final MAPE: {mape_value:.2f}%")
+    print(f"Final RMSE: {rmse:.2f}")
+    print(f"Final MSE: {mse:.2f}")
+
+    # Store the results in a dictionary
+    result_data = {
+        'Project': project_name,
+        'Model': 'DGLM',
+        'MAE': mae,
+        'MAPE': mape_value,
+        'RMSE': rmse,
+        'MSE': mse
+    }
+
+    # Output path to save the results
+    base_path = os.path.join(DATA_PATH, 'PYBATS_DGLM', periodicity)
+    os.makedirs(base_path, exist_ok=True)
+    csv_output_path = os.path.join(base_path, "assessment.csv")
+
+    # Save result_df as a CSV file
+    results_df = pd.DataFrame([result_data])
+    if not os.path.isfile(csv_output_path):
+        results_df.to_csv(csv_output_path, mode='w', index=False, header=True)
+    else:
+        results_df.to_csv(csv_output_path, mode='a', index=False, header=False)
+
+    print(f"Results for {project_name} saved in {base_path}")
+
+    return mod, forecast, samples, y
+
+
+def trigger_prediction(df_path, project_name, periodicity):
+    try:
+        encoding = check_encoding(df_path)
+        df = pd.read_csv(df_path, encoding=encoding)
+        df['COMMIT_DATE'] = pd.to_datetime(df['COMMIT_DATE'])
+        df.set_index('COMMIT_DATE', inplace=True)
+        df = df.dropna()
+
+        # Splitting data into training (80%) and testing (20%)
+        split_point = round(len(df) * 0.8)
+        training_df = df.iloc[:split_point, :]
+        testing_df = df.iloc[split_point:, :]
+
+        #Dependent and independent variables
+        y_train = training_df['SQALE_INDEX'].values
+        x_train = training_df.drop(columns=['SQALE_INDEX'])
+        y_test = testing_df['SQALE_INDEX'].values
+        x_test = testing_df.drop(columns=['SQALE_INDEX'])
+
+        # Running multivariate forecast
+        #mv_mod, mv_for, mv_samp, mv_y = bayes_forecast(x_train, training_df['SQALE_INDEX'], periodicity, project_name)
+
+        # Running univariate forecast
+        mv_mod, mv_for, mv_samp, mv_y = bayes_forecast(None, training_df['SQALE_INDEX'], periodicity, project_name)
+
+
+        return mv_for
+
+    except Exception as e:
+        logger.error(f"Error processing {project_name}: {str(e)}")
+        return None
+
+def bayesian_dglm():
     # Define paths for biweekly and monthly data
-    biweekly_data_path = os.path.join(DATA_PATH, "biweekly_data_1")
-    monthly_data_path = os.path.join(DATA_PATH, "monthly_data_1")
-    complete_data_path = os.path.join(DATA_PATH, "complete_data_1")
+    biweekly_data_path = os.path.join(DATA_PATH, "biweekly_data")
+    monthly_data_path = os.path.join(DATA_PATH, "monthly_data")
+    complete_data_path = os.path.join(DATA_PATH, "complete_data")
 
     # List existing data files
     biweekly_files = os.listdir(biweekly_data_path)
@@ -39,13 +159,7 @@ def bayesian_dglm(seasonality=True):
             df_path=os.path.join(biweekly_data_path, biweekly_files[i]),
             project_name=project,
             periodicity="biweekly",
-            seasonality=seasonality
         )
-        # Check if processing was successful
-        if pybats_dglm_biweekly is None or pybats_dglm_monthly is None:
-            logger.warning(f"Skipping {project} due to simulation issues.")
-            continue
-            logger.info(f"> dglm prediction for project <{project}> performed - {i+1}/{len(biweekly_files)}")
 
     for i in range(len(monthly_files)):
         if monthly_files[i] == '.DS_Store':
@@ -60,7 +174,6 @@ def bayesian_dglm(seasonality=True):
             df_path=os.path.join(monthly_data_path, monthly_files[i]),
             project_name=project,
             periodicity="monthly",
-            seasonality=seasonality
         )
 
     for i in range(len(complete_files)):
@@ -76,61 +189,7 @@ def bayesian_dglm(seasonality=True):
             df_path=os.path.join(complete_data_path, complete_files[i]),
             project_name=project,
             periodicity="complete",
-            seasonality=False
         )
         
 
     logger.info("> Bayesian DGLM simulation stage performed!")
-
-
-def trigger_prediction(df_path, project_name, periodicity, seasonality):
-    try:
-        # Load the dataset
-        encoding = check_encoding(df_path)
-        df = pd.read_csv(df_path, encoding=encoding)
-        df['COMMIT_DATE'] = pd.to_datetime(df['COMMIT_DATE'])
-        df['SQALE_INDEX'] = pd.to_numeric(df['SQALE_INDEX'], errors='coerce')
-        df = df.dropna()
-
-        # Define the date index and data columns
-        df.set_index('COMMIT_DATE', inplace=True)
-        y = df['SQALE_INDEX']
-
-        # Define seasonality
-        if seasonality:
-            if periodicity == 'biweekly':
-                seasPeriods = 26
-            elif periodicity == 'monthly':
-                seasPeriods = 12
-            else:
-                seasPeriods = None
-        else:
-            seasPeriods = None
-
-        # Define priors for DGLM
-        prior_length = max(10, seasPeriods * 2 if seasPeriods else 0)
-        k = min(len(y) - 1, prior_length)
-        mod, prior = dcmm(y.iloc[:k].values, seasPeriods=seasPeriods)
-
-        # Fit the model and forecast
-        forecast_start = df.index[k]
-        forecast_end = df.index[-1]
-        result = analysis(y, mod, k, forecast_start, forecast_end,
-                          forecast_samps=1000, prior_length=prior_length,
-                          family="normal", seasPeriods=seasPeriods)
-
-        # Save forecasts to DataFrame
-        forecast = median(result)
-        df_forecast = pd.DataFrame(data={
-            'Forecast': forecast,
-            'Actual': y[forecast_start:forecast_end+pd.DateOffset(days=1)]
-        }, index=pd.date_range(start=forecast_start, periods=len(forecast), freq=df.index.freq))
-
-        # Plotting forecast against actual data
-        plot_data_forecast(y, forecast, df.index[k], forecast_start, forecast_end)
-
-        return df_forecast
-
-    except Exception as e:
-        logger.error(f"Error processing {project_name}: {str(e)}")
-        return None

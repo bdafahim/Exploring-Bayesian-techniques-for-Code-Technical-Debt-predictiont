@@ -25,7 +25,7 @@ def main():
         #preprocessing()
         data_prepare()
     if DGLM:
-        bayesian_dglm(seasonality=True)
+        bayesian_dglm()
     if ORBIT:
         #bayesian_orbit()
         #bayesian_orbit_ets()
