@@ -192,7 +192,7 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
                 estimator=estimator,
                 global_trend_option=trend,
                 seed=8888,
-                regressor_col=important_features,
+                regressor_col=x_train.columns.tolist(),
                 n_bootstrap_draws=1000
             )
             
@@ -257,7 +257,7 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
     test_df_for_prediction = pd.concat([test_df_for_prediction, testing_df[important_features]], axis=1)
 
     # Use the best model for final predictions
-    predicted_df = best_model.predict(df=test_df_for_prediction)
+    predicted_df = best_model.predict(df=testing_df)
     
     actual = y_test
     predicted = predicted_df['prediction'].values

@@ -1,0 +1,14 @@
+{
+    "Project": "daemon",
+    "best_regressors": [
+        "S1213",
+        "RedundantThrowsDeclarationCheck",
+        "S00122",
+        "UselessImportCheck",
+        "DuplicatedBlocks",
+        "S1226",
+        "S00112",
+        "S1151",
+        "S1132"
+    ]
+}

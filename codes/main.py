@@ -13,9 +13,10 @@ from bayesian_prediction_orbit_ETS import bayesian_orbit_ets
 from bayesian_pybats_dglm import bayesian_dglm
 from bayesian_prediction_pybsts import bayesian_pybsts
 from bayesian_prediction_orbit_KTR import bayesian_orbit_ktr
+#from bayesian_prediction_pymc import bayesian_pymc
 
 
-from commons import SARIMAX, SIMULATION, SIMULATION_FUTURE_POINTS,  RELATED_WORK, ML_MODELS, COMBINE_RESULTS, PREPROCESSING, DGLM, ORBIT, PYBSTS
+from commons import SARIMAX, SIMULATION, SIMULATION_FUTURE_POINTS,  RELATED_WORK, ML_MODELS, COMBINE_RESULTS, PREPROCESSING, DGLM, ORBIT, PYBSTS, PYMC
 
 
 def main():
@@ -27,11 +28,12 @@ def main():
     if DGLM:
         bayesian_dglm()
     if ORBIT:
-        #bayesian_orbit()
+        bayesian_orbit()
         #bayesian_orbit_ets()
-        bayesian_orbit_ktr()
+        #bayesian_orbit_ktr()
     if PYBSTS:
         bayesian_pybsts()
+
 
 
 if __name__ == '__main__':
