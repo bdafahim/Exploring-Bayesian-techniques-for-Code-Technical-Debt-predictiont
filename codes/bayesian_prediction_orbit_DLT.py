@@ -172,7 +172,7 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
 
 
     # Define the hyperparameter grid (without penalties)
-    trend_options = ['linear', 'loglinear', 'flat', 'logistic']
+    trend_options = ['linear', 'loglinear']
     estimators = ['stan-map', 'stan-mcmc']
 
     best_mae = float('inf')
@@ -287,7 +287,7 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
     }
 
     # Output path to save the results
-    base_path = os.path.join(DATA_PATH, f"ORBIT_ML_{name}", 'DLT_Result', periodicity)
+    base_path = os.path.join(DATA_PATH, f"ORBIT_ML", 'DLT_Result', periodicity)
     os.makedirs(base_path, exist_ok=True)
     csv_output_path = os.path.join(base_path, "assessment.csv")
 
@@ -316,7 +316,7 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
 
 
 # Example function call
-def bayesian_orbit():
+def bayesian_orbit_DLT():
     biweekly_data_path = os.path.join(DATA_PATH, "biweekly_data")
     monthly_data_path = os.path.join(DATA_PATH, "monthly_data")
     complete_data_path = os.path.join(DATA_PATH, "complete_data")

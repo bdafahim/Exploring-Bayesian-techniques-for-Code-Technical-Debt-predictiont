@@ -8,7 +8,7 @@ import os
 
 from preprocessing import preprocessing
 from tsDataPreparation import data_prepare
-from bayesian_prediction_orbit_DLT import bayesian_orbit
+from bayesian_prediction_orbit_DLT import bayesian_orbit_DLT
 from bayesian_prediction_orbit_ETS import bayesian_orbit_ets
 from bayesian_pybats_dglm import bayesian_dglm
 from bayesian_prediction_pybsts import bayesian_pybsts
@@ -29,7 +29,7 @@ def main():
     if DGLM:
         bayesian_dglm()
     if ORBIT:
-        bayesian_orbit()
+        bayesian_orbit_DLT()
         #bayesian_orbit_ets()
         #bayesian_orbit_ktr()
     if PYBSTS:
