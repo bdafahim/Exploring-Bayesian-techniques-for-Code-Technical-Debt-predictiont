@@ -132,14 +132,16 @@ def trigger_prediction(df_path, project_name, periodicity, seasonality):
         forecast_means = np.array(forecast_means).flatten()
 
         # Calculate error metrics
-        mae = MAE(y_test, forecast_means)
-        mse = MSE(y_test, forecast_means)
-        rmse = RMSE(y_test, forecast_means)
-        mape = MAPE(y_test, forecast_means)
+        mae = round(MAE(y_test, forecast_means),2)
+        mse = round(MSE(y_test, forecast_means),2)
+        rmse = round(RMSE(y_test, forecast_means),2)
+        mape = round(MAPE(y_test, forecast_means),2)
 
         # Log and store the results
         results_data = {
             'Project': project_name,
+            'Model': 'DLM',
+            'Estimator': 'MCMC',
             'MAE': mae,
             'MAPE': mape,
             'RMSE': rmse,
