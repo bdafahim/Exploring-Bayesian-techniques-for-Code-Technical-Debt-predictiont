@@ -15,9 +15,10 @@ from bayesian_prediction_pybsts import bayesian_pybsts
 from bayesian_prediction_orbit_KTR import bayesian_orbit_ktr
 #from bayesian_prediction_pymc import bayesian_pymc
 from bayesian_prediction_pyDLM import bayesian_pyDLM
+from change_point_detection_pyDLM import bayesian_change_point_detection_pyDLM
 
 
-from commons import PREPROCESSING, DGLM, ORBIT, PYBSTS, PYMC, PYDLM
+from commons import PREPROCESSING, DGLM, ORBIT, PYBSTS, PYMC, PYDLM, CHANGEPOINT
 
 
 def main():
@@ -36,6 +37,8 @@ def main():
         bayesian_pybsts()
     if PYDLM:
         bayesian_pyDLM()
+    if CHANGEPOINT:
+        bayesian_change_point_detection_pyDLM()
 
 
 
