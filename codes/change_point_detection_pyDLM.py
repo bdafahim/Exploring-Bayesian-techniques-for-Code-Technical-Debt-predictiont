@@ -71,7 +71,7 @@ def trigger_changepoint_detection(df_path, project_name, periodicity=None):
 
         # Highlight change points with red vertical lines
         for cp in change_points:
-            plt.axvline(x=cp, color='red', linestyle='--', label=f'Change Point at {cp}' if cp == change_points[0] else "")
+            plt.axvline(x=cp, color='red', linestyle='--', label=f'Change Point' if cp == change_points[0] else "")
 
         plt.title(f"SQALE_INDEX with Detected Change Points, project: {project_name}, periodicty:{periodicity}")
         plt.xlabel("Time Index")
