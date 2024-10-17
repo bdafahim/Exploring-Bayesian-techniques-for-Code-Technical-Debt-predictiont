@@ -6,7 +6,7 @@ from modules import check_encoding
 import matplotlib.pyplot as plt
 import logging
 from modules import MAPE, RMSE, MAE, MSE
-from scipy.stats import multivariate_normal
+from scipy.stats import norm
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -46,29 +46,21 @@ class BayesianChangepointDetection:
 def hazard_function(t, lambda_=200):
     return 1.0 / lambda_
 
-# Define a simple observation likelihood (e.g., multivariate normal) with regularization
+# Define a univariate observation likelihood (Gaussian distribution)
 def observation_likelihood(data):
-    mean = np.mean(data, axis=0)
-
-    # Compute the covariance matrix
-    cov = np.cov(data, rowvar=False)
-
-    # Check if the covariance matrix is square
-    if cov.shape[0] != cov.shape[1]:
-        logger.error(f"Covariance matrix shape mismatch: {cov.shape}")
-        return 1e-10  # Return a small likelihood if covariance matrix is ill-defined
-
-    # Add a small regularization to the diagonal of the covariance matrix to make it positive definite
-    regularization_term = 1e-6
-    cov += np.eye(cov.shape[0]) * regularization_term
+    mean = np.mean(data)
+    std = np.std(data)
+    
+    # Regularize the standard deviation to avoid over-sensitivity
+    regularization_term = 1e-2
+    std = max(std, regularization_term)
     
     try:
-        mvn = multivariate_normal(mean=mean, cov=cov, allow_singular=False)
-        likelihoods = mvn.pdf(data)
+        likelihoods = norm.pdf(data, loc=mean, scale=std)
         return np.prod(likelihoods)
-    except np.linalg.LinAlgError as e:
-        logger.error(f"Error in computing multivariate normal likelihood: {str(e)}")
-        return 1e-10  # Return a small likelihood if there's an error in covarian
+    except Exception as e:
+        logger.error(f"Error in computing Gaussian likelihood: {str(e)}")
+        return 1e-10  # Return a small likelihood if there's an error
 
 
 def trigger_detection(df_path, project_name, periodicity):
@@ -80,19 +72,30 @@ def trigger_detection(df_path, project_name, periodicity):
         df.set_index('COMMIT_DATE', inplace=True)
         df = df.dropna()
 
-        # Assuming independent variables are all columns except COMMIT_DATE and SQALE_INDEX
-        independent_vars = df.drop(columns=["SQALE_INDEX"]).values
-
-        # Ensure the data has sufficient dimensions
-        if independent_vars.ndim != 2 or independent_vars.shape[0] < independent_vars.shape[1]:
-            logger.error(f"Error in {project_name}: Insufficient data or too many features. Data shape: {independent_vars.shape}")
-            return None
+        # Using only the SQALE_INDEX column (univariate)
+        target_variable = df['SQALE_INDEX'].values
 
         # Initialize and apply Bayesian changepoint detection
         bocpd = BayesianChangepointDetection(hazard_function, observation_likelihood)
-        bocpd.initialize(independent_vars)
+        bocpd.initialize(target_variable)
 
         changepoints = bocpd.detect()
+
+         # Plot the SQALE_INDEX values (y_train)
+        plt.figure(figsize=(10, 6))
+        plt.plot(target_variable, label="SQALE_INDEX", color='blue', linewidth=2)
+
+        # Highlight change points with red vertical lines
+        for cp in changepoints:
+            plt.axvline(x=cp, color='red', linestyle='--', label=f'Change Point' if cp == changepoints[0] else "")
+
+        plt.title(f"SQALE_INDEX with Detected Change Points, project: {project_name}, periodicty:{periodicity}")
+        plt.xlabel("Time Index")
+        plt.ylabel("SQALE_INDEX")
+        plt.legend()
+        plt.grid(True)
+        #plt.savefig(os.path.join(plot_path, f"{project_name}.png"))
+        plt.show()
         logger.info(f"Detected changepoints for {project_name} in {periodicity} data at indices: {changepoints}")
 
         return changepoints  # Return the detected changepoints
@@ -128,7 +131,7 @@ def bayesian_changepoint_detection():
             periodicity="biweekly",
         )
 
-    '''for i in range(len(monthly_files)):
+    for i in range(len(monthly_files)):
         if monthly_files[i] == '.DS_Store':
             continue
         project = monthly_files[i][:-4]
@@ -156,7 +159,6 @@ def bayesian_changepoint_detection():
             df_path=os.path.join(complete_data_path, complete_files[i]),
             project_name=project,
             periodicity="complete",
-        )'''
-        
+        )
 
     logger.info("> Changepoint detection performed!")
