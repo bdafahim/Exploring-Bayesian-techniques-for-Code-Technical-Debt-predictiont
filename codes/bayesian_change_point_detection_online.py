@@ -1,164 +1,227 @@
+
 import os
 import pandas as pd
 import numpy as np
+from sklearn.metrics import mean_absolute_error
 from commons import DATA_PATH
-from modules import check_encoding
-import matplotlib.pyplot as plt
-import logging
 from modules import MAPE, RMSE, MAE, MSE
-from scipy.stats import norm
+import json
+import logging
+import matplotlib.pyplot as plt
+from scipy.stats import multivariate_t
+from numpy.linalg import inv
+from itertools import islice
+import scipy.stats as ss
+from abc import ABC, abstractmethod
+import json
+
+
+
+
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Bayesian Changepoint Detection Helper Functions
-class BayesianChangepointDetection:
-    def __init__(self, hazard_func, obs_likelihood):
-        self.hazard_func = hazard_func
-        self.obs_likelihood = obs_likelihood
-        self.run_length_probs = []
 
-    def initialize(self, data):
-        self.data = data
-        self.T = data.shape[0]
-        self.run_length_probs = np.zeros(self.T)
-        self.run_length_probs[0] = 1.0  # Initialize the first run length probability
+# Define the BaseLikelihood class
+class BaseLikelihood(ABC):
+    """
+    Abstract base class to define the structure for likelihood functions.
+    Future classes inheriting this must implement the abstract methods.
+    """
+    @abstractmethod
+    def pdf(self, data: np.array):
+        raise NotImplementedError("PDF is not defined. Please define in derived class.")
 
-    def detect(self):
-        changepoints = []
-        for t in range(1, self.T):
-            # Compute predictive probability
-            pred_prob = self.obs_likelihood(self.data[:t])
-            
-            # Update run length probabilities using recursive message passing
-            self.run_length_probs[t] = self.hazard_func(t) * (1 - pred_prob)
-            
-            # Normalize probabilities
-            self.run_length_probs[t] /= np.sum(self.run_length_probs[t])
+    @abstractmethod
+    def update_theta(self, data: np.array, **kwargs):
+        raise NotImplementedError("Update theta is not defined. Please define in derived class.")
 
-            # If there's a high probability of changepoint, log it
-            if self.run_length_probs[t] > 0.9:  # Example threshold
-                changepoints.append(t)
-
-        return changepoints  # Return detected changepoints
-
-# Define a hazard function (geometric distribution as an example)
-def hazard_function(t, lambda_=200):
-    return 1.0 / lambda_
-
-# Define a univariate observation likelihood (Gaussian distribution)
-def observation_likelihood(data):
-    mean = np.mean(data)
-    std = np.std(data)
-    
-    # Regularize the standard deviation to avoid over-sensitivity
-    regularization_term = 1e-2
-    std = max(std, regularization_term)
-    
+# Main method to trigger the change point detection process
+def trigger_changepoint_detection(df_path, project_name, periodicity=None):
     try:
-        likelihoods = norm.pdf(data, loc=mean, scale=std)
-        return np.prod(likelihoods)
-    except Exception as e:
-        logger.error(f"Error in computing Gaussian likelihood: {str(e)}")
-        return 1e-10  # Return a small likelihood if there's an error
-
-
-def trigger_detection(df_path, project_name, periodicity):
-    try:
-        # Load dataset
-        encoding = check_encoding(df_path)
-        df = pd.read_csv(df_path, encoding=encoding)
+        # Read the data from CSV
+        df = pd.read_csv(df_path)
         df['COMMIT_DATE'] = pd.to_datetime(df['COMMIT_DATE'])
         df.set_index('COMMIT_DATE', inplace=True)
         df = df.dropna()
 
-        # Using only the SQALE_INDEX column (univariate)
-        target_variable = df['SQALE_INDEX'].values
+        # Get dependent variables (features) and the target variable (SQALE_INDEX)
+        features = df.drop(columns=["SQALE_INDEX"])
+        target = df["SQALE_INDEX"].values
 
-        # Initialize and apply Bayesian changepoint detection
-        bocpd = BayesianChangepointDetection(hazard_function, observation_likelihood)
-        bocpd.initialize(target_variable)
+        # Instantiate the Bayesian Change Point detection model using Multivariate T distribution
+        detector = MultivariateT(dims=features.shape[1])
+         # Store the results in a JSON file
+        base_path = os.path.join(DATA_PATH, 'Changepoint_Result', periodicity)
+        os.makedirs(base_path, exist_ok=True)
+        plot_path = os.path.join(base_path, 'Changepoint_Plots')
+        os.makedirs(plot_path, exist_ok=True)
 
-        changepoints = bocpd.detect()
 
-         # Plot the SQALE_INDEX values (y_train)
+        # Iterate through each time step
+        change_points = []
+        for t in range(len(target)):
+            # Update the detector with the current observation
+            detector.update_theta(data=features.iloc[t].values)
+
+            # Get the posterior probability of change point at this time step
+            prob = detector.pdf(features.iloc[t].values)
+            
+            # Assume a threshold to detect changepoint (This can be tuned)
+            if prob.max() < 0.01:
+                change_points.append(df.index[t])
+        
+        # Plot the changepoints on the original data
         plt.figure(figsize=(10, 6))
-        plt.plot(target_variable, label="SQALE_INDEX", color='blue', linewidth=2)
-
-        # Highlight change points with red vertical lines
-        for cp in changepoints:
-            plt.axvline(x=cp, color='red', linestyle='--', label=f'Change Point' if cp == changepoints[0] else "")
-
-        plt.title(f"SQALE_INDEX with Detected Change Points, project: {project_name}, periodicty:{periodicity}")
-        plt.xlabel("Time Index")
+        plt.plot(df.index, target, label="SQALE_INDEX")
+        plt.scatter(change_points, [target[df.index.get_loc(cp)] for cp in change_points], color='red', label="Change Points")
+        plt.title(f"Change Point Detection for {project_name} ({periodicity})")
+        plt.xlabel("Date")
         plt.ylabel("SQALE_INDEX")
         plt.legend()
-        plt.grid(True)
-        #plt.savefig(os.path.join(plot_path, f"{project_name}.png"))
-        plt.show()
-        logger.info(f"Detected changepoints for {project_name} in {periodicity} data at indices: {changepoints}")
+        plt.savefig(os.path.join(plot_path, f"{project_name}.png"))
+        #plt.show()
 
-        return changepoints  # Return the detected changepoints
+        output_path = os.path.join(base_path, 'Bayesian_Changepoints_JSON', f"{project_name}_changepoints.json")
+        os.makedirs(output_path, exist_ok=True)
+
+        change_points_data = []
+
+        for cp in change_points:
+            # Find the corresponding SQALE_INDEX value for the change point date
+            sqale_index_value = df.loc[cp, 'SQALE_INDEX']
+
+            # Conditional conversion: if periodicity is 'complete', convert SQALE_INDEX to float
+            if periodicity == 'complete':
+                sqale_index_value = float(sqale_index_value)
+            # Append a dictionary with date and SQALE_INDEX
+            change_points_data.append({
+                'date': cp.strftime('%Y-%m-%d %H:%M:%S'),  # Convert Timestamp to a string format
+                'SQALE_INDEX': sqale_index_value
+            })
+        # Construct the path for the JSON file
+        output_dir = os.path.join(base_path, 'Changepoints_JSON')
+        os.makedirs(output_dir, exist_ok=True)  # Ensure the directory for JSON files exists
+        # Now, specify the file path for saving the changepoints
+        output_path = os.path.join(output_dir, f"{project_name}_changepoints.json")
+
+        # Save the change_points_data as a JSON file
+        with open(output_path, "w") as f:
+            json.dump({"change_points": change_points_data}, f, indent=4)
+
+        # Optionally, return change points for further analysis
+        return change_points
 
     except Exception as e:
         logger.error(f"Error processing {project_name}: {str(e)}")
         return None
 
 
-def bayesian_changepoint_detection():
-    # Define paths for biweekly and monthly data
-    biweekly_data_path = os.path.join(DATA_PATH, "biweekly_data_1")
-    monthly_data_path = os.path.join(DATA_PATH, "monthly_data_1")
-    complete_data_path = os.path.join(DATA_PATH, "complete_data_1")
 
-    # List existing data files
-    biweekly_files = os.listdir(biweekly_data_path)
+
+# Bayesian Change Point Detection Model using Multivariate T-Distribution
+class MultivariateT(BaseLikelihood):
+    def __init__(self, dims: int = 1, dof: int = 0, kappa: int = 1, mu: float = -1, scale: float = -1):
+        if dof == 0:
+            dof = dims + 1
+        if mu == -1:
+            mu = [0] * dims
+        else:
+            mu = [mu] * dims
+        if scale == -1:
+            scale = np.identity(dims)
+        else:
+            scale = np.identity(scale)
+
+        self.t = 0
+        self.dims = dims
+        self.dof = np.array([dof])
+        self.kappa = np.array([kappa])
+        self.mu = np.array([mu])
+        self.scale = np.array([scale])
+
+    def pdf(self, data: np.array):
+        self.t += 1
+        t_dof = self.dof - self.dims + 1
+        expanded = np.expand_dims((self.kappa * t_dof) / (self.kappa + 1), (1, 2))
+        ret = np.empty(self.t)
+        try:
+            for i, (df, loc, shape) in islice(
+                enumerate(zip(t_dof, self.mu, inv(expanded * self.scale))), self.t
+            ):
+                ret[i] = multivariate_t.pdf(x=data, df=df, loc=loc, shape=shape)
+        except AttributeError:
+            raise Exception(
+                "You need scipy 1.6.0 or greater to use the multivariate t distribution"
+            )
+        return ret
+
+    def update_theta(self, data: np.array, **kwargs):
+        centered = data - self.mu
+        self.scale = np.concatenate(
+            [
+                self.scale[:1],
+                inv(
+                    inv(self.scale)
+                    + np.expand_dims(self.kappa / (self.kappa + 1), (1, 2))
+                    * (np.expand_dims(centered, 2) @ np.expand_dims(centered, 1))
+                ),
+            ]
+        )
+        self.mu = np.concatenate(
+            [
+                self.mu[:1],
+                (np.expand_dims(self.kappa, 1) * self.mu + data)
+                / np.expand_dims(self.kappa + 1, 1),
+            ]
+        )
+        self.dof = np.concatenate([self.dof[:1], self.dof + 1])
+        self.kappa = np.concatenate([self.kappa[:1], self.kappa + 1])
+
+
+# Example function call
+def bayesian_change_point_detection():
+    biweekly_data_path = os.path.join(DATA_PATH, "biweekly_data")
+    monthly_data_path = os.path.join(DATA_PATH, "monthly_data")
+    complete_data_path = os.path.join(DATA_PATH, "complete_data")
+
+    biweekly_files = os.listdir(biweekly_data_path) 
     monthly_files = os.listdir(monthly_data_path)
     complete_files = os.listdir(complete_data_path)
 
-    for i in range(len(biweekly_files)):
-        if biweekly_files[i] == '.DS_Store':
+    # Process biweekly data
+    for biweekly_file in biweekly_files:
+        if biweekly_file == '.DS_Store':
             continue
-        project = biweekly_files[i][:-4]
-
-        logger.info(f"Processing {project}")
-
-        # Process biweekly data
-        logger.info(f"> Processing {project} for biweekly data")
-        changepoints_biweekly = trigger_detection(
-            df_path=os.path.join(biweekly_data_path, biweekly_files[i]),
+        project = biweekly_file[:-4]
+        print(f"> Processing {project} for biweekly data")
+        method_biweekly = trigger_changepoint_detection(
+            df_path=os.path.join(biweekly_data_path, biweekly_file),
             project_name=project,
             periodicity="biweekly",
         )
 
-    for i in range(len(monthly_files)):
-        if monthly_files[i] == '.DS_Store':
+    # Process monthly data
+    for monthly_file in monthly_files:
+        if monthly_file == '.DS_Store':
             continue
-        project = monthly_files[i][:-4]
-
-        logger.info(f"Processing {project}")
-
-        # Process monthly data
-        logger.info(f"> Processing {project} for monthly data")
-        changepoints_monthly = trigger_detection(
-            df_path=os.path.join(monthly_data_path, monthly_files[i]),
+        project = monthly_file[:-4]
+        print(f"> Processing {project} for monthly data")
+        method_monthly = trigger_changepoint_detection(
+            df_path=os.path.join(monthly_data_path, monthly_file),
             project_name=project,
             periodicity="monthly",
         )
 
-    for i in range(len(complete_files)):
-        if complete_files[i] == '.DS_Store':
+    # Process complete data
+    for complete_file in complete_files:
+        if complete_file == '.DS_Store':
             continue
-        project = complete_files[i][:-4]
-
-        logger.info(f"Processing {project}")
-
-        # Process complete data
-        logger.info(f"> Processing {project} for complete data")
-        changepoints_complete = trigger_detection(
-            df_path=os.path.join(complete_data_path, complete_files[i]),
+        project = complete_file[:-4]
+        print(f"> Processing {project} for complete data")
+        method_complete = trigger_changepoint_detection(
+            df_path=os.path.join(complete_data_path, complete_file),
             project_name=project,
             periodicity="complete",
         )
-
-    logger.info("> Changepoint detection performed!")

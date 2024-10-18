@@ -82,8 +82,12 @@ def trigger_changepoint_detection(df_path, project_name, periodicity=None):
         #plt.show()
 
         
-        output_path = os.path.join(base_path, 'Changepoints_JSON', f"{project_name}_changepoints.json")
-        os.makedirs(output_path, exist_ok=True)
+
+        # Construct the path for the JSON file
+        output_dir = os.path.join(base_path, 'Changepoints_JSON')
+        os.makedirs(output_dir, exist_ok=True)  # Ensure the directory for JSON files exists
+        # Now, specify the file path for saving the changepoints
+        output_path = os.path.join(output_dir, f"{project_name}_changepoints.json")
 
         with open(output_path, "w") as f:
             json.dump({"change_points": change_points}, f)
