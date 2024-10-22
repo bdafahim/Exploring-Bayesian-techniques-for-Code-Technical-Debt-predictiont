@@ -18,158 +18,8 @@ from statsmodels.tsa.stattools import grangercausalitytests
 import json
 
 
-
-# Function to perform Lasso Regression for feature selection
-def select_features_with_lasso(X, y, alpha=0.01):
-    # Standardize the features (important for Lasso)
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    
-    # Lasso Regression for feature selection
-    lasso = Lasso(alpha=alpha)
-    lasso.fit(X_scaled, y)
-    
-    # Select features with non-zero coefficients
-    selected_features = np.where(lasso.coef_ != 0)[0]
-    important_features = X.columns[selected_features]
-    
-    print(f"Selected Features: {important_features.tolist()}")
-    
-    return important_features, 'L1'
-
-# Function to perform Recursive Feature Elimination (RFE) for feature selection
-def select_features_with_rfe(X, y, num_features):
-    # Use a basic linear model to perform RFE
-    model = LinearRegression()
-    
-    # Perform RFE to select the top 'num_features' most important features
-    rfe = RFE(model, n_features_to_select=num_features)
-    rfe.fit(X, y)
-    
-    # Select features with non-zero importance
-    selected_features = X.columns[rfe.support_]
-    
-    print(f"Selected Features using RFE: {selected_features.tolist()}")
-    
-    return selected_features, 'RFE'
-
-# Bayesian Model Averaging (BMA) for Feature Selection
-def select_features_with_bma(X, y, num_features=None):
-    # Bayesian Ridge as a proxy for BMA-like behavior
-    model = BayesianRidge()
-    
-    # Fit the model
-    model.fit(X, y)
-    
-    # Extract feature coefficients (weights)
-    coefficients = np.abs(model.coef_)
-    
-    # Sort features by their absolute coefficient values (important for selection)
-    feature_importance = np.argsort(-coefficients)
-    
-    # Select top 'num_features' based on coefficients, or all non-zero coefficients if num_features is not provided
-    if num_features is not None:
-        selected_indices = feature_importance[:num_features]
-    else:
-        selected_indices = feature_importance[coefficients > 0]
-    
-    # Select the feature names
-    selected_features = X.columns[selected_indices]
-    
-    print(f"Selected Features using BMA: {selected_features.tolist()}")
-    
-    return selected_features, 'BMA'
-
-
-# XGBoost for Feature Selection
-def select_features_with_xgboost(X, y, num_features=None):
-    # Fit an XGBoost regressor
-    model = XGBRegressor(objective='reg:squarederror', n_estimators=100, random_state=8888)
-    model.fit(X, y)
-    
-    # Extract feature importance
-    feature_importances = model.feature_importances_
-    
-    # Rank features based on importance
-    feature_indices = np.argsort(-feature_importances)
-    
-    # Select the top 'num_features' if specified, or all non-zero features otherwise
-    if num_features is not None:
-        selected_indices = feature_indices[:num_features]
-    else:
-        selected_indices = feature_indices[feature_importances > 0]
-    
-    # Select the feature names
-    selected_features = X.columns[selected_indices]
-    
-    print(f"Selected Features using XGBoost: {selected_features.tolist()}")
-    
-    return selected_features, 'XGBoost'
-
-# Random Forest for Feature Selection
-def select_features_with_random_forest(X, y, num_features=None):
-    # Fit a RandomForest regressor
-    model = RandomForestRegressor(n_estimators=100, random_state=8888)
-    model.fit(X, y)
-    
-    # Extract feature importance
-    feature_importances = model.feature_importances_
-    
-    # Rank features based on importance
-    feature_indices = np.argsort(-feature_importances)
-    
-    # Select the top 'num_features' if specified, or all non-zero features otherwise
-    if num_features is not None:
-        selected_indices = feature_indices[:num_features]
-    else:
-        selected_indices = feature_indices[feature_importances > 0]
-    
-    # Select the feature names
-    selected_features = X.columns[selected_indices]
-    
-    print(f"Selected Features using Random Forest: {selected_features.tolist()}")
-    
-    return selected_features, 'RandomForest'
-
-
-def remove_unwanted_features(features, unwanted=['Unnamed: 0']):
-    """
-    Removes unwanted features from the list of selected features.
-    
-    Args:
-        features: List of selected features.
-        unwanted: List of unwanted feature names to remove.
-        
-    Returns:
-        List of features with unwanted features removed.
-    """
-    cleaned_features = [feature for feature in features if feature not in unwanted]
-    print(f"Cleaned Features: {cleaned_features}")
-    return cleaned_features
-
 # Define the hypertuning function for DLT model
 def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seasonality):
-
-
-    # Perform feature selection using Lasso
-    important_features, name = select_features_with_lasso(x_train, y_train)
-
-    # Perform feature selection using RFE
-    #important_features, name = select_features_with_rfe(x_train, y_train, num_features=10)
-
-    # Perform feature selection using BMA
-    #important_features, name = select_features_with_bma(x_train, y_train)
-
-    # Perform feature selection using XGBoost
-    #important_features, name = select_features_with_xgboost(x_train, y_train)
-
-    # Perform feature selection using Random Forest
-    #important_features, name = select_features_with_random_forest(x_train, y_train)
-
-    # Remove unwanted features like 'Unnamed: 0'
-    important_features = remove_unwanted_features(important_features)
-
-
 
     # Define the hyperparameter grid (without penalties)
     trend_options = ['linear', 'loglinear']
@@ -219,7 +69,7 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
     print(f"Best configuration: {best_config} with MAE: {best_mae:.2f}")
     
     # Return the best model and configuration
-    return best_model, best_config, important_features, name
+    return best_model, best_config, name
 
 
 # Main method to trigger the prediction process
@@ -243,7 +93,7 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
     x_test = testing_df.drop(columns=['COMMIT_DATE', 'SQALE_INDEX'])
 
     # Hypertune the DLT model
-    best_model, best_config, important_features, name = hypertune_dlt_model(
+    best_model, best_config, name = hypertune_dlt_model(
         training_df=training_df, 
         y_train=y_train, 
         x_train=x_train, 
@@ -254,7 +104,6 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
 
      # Ensure COMMIT_DATE is included in the DataFrame used for prediction along with important features
     test_df_for_prediction = testing_df[['COMMIT_DATE']].copy()  # Ensure COMMIT_DATE is present
-    test_df_for_prediction = pd.concat([test_df_for_prediction, testing_df[important_features]], axis=1)
 
     # Use the best model for final predictions
     predicted_df = best_model.predict(df=testing_df)
@@ -298,17 +147,6 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
     else:
         results_df.to_csv(csv_output_path, mode='a', index=False, header=False)
 
-    # Save important features to JSON
-    features_base_path = os.path.join(base_path, 'best_regressors')
-    os.makedirs(features_base_path, exist_ok=True)
-    features_output_path = os.path.join(features_base_path, f"{project_name}.json")
-    features_data = {
-        "Project": project_name,
-        "best_regressors": important_features  # Convert important features to list for JSON format
-    }
-    
-    with open(features_output_path, 'w') as json_file:
-        json.dump(features_data, json_file, indent=4)  # Save the important features in JSON format with indentation
 
     print(f"Results for {project_name} saved in {base_path}")
     print(f"Important features saved in {features_output_path}")
