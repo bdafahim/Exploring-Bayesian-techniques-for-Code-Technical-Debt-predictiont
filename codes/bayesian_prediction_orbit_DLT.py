@@ -5,16 +5,6 @@ from orbit.models import DLT
 from sklearn.metrics import mean_absolute_error
 from commons import DATA_PATH
 from modules import MAPE, RMSE, MAE, MSE
-from sklearn.linear_model import Lasso
-from sklearn.preprocessing import StandardScaler
-import itertools
-from sklearn.feature_selection import RFE
-from sklearn.linear_model import LinearRegression
-from sklearn.feature_selection import SelectFromModel
-from sklearn.linear_model import BayesianRidge
-from xgboost import XGBRegressor
-from sklearn.ensemble import RandomForestRegressor
-from statsmodels.tsa.stattools import grangercausalitytests
 import json
 
 
@@ -69,7 +59,7 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
     print(f"Best configuration: {best_config} with MAE: {best_mae:.2f}")
     
     # Return the best model and configuration
-    return best_model, best_config, name
+    return best_model, best_config
 
 
 # Main method to trigger the prediction process
@@ -93,7 +83,7 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
     x_test = testing_df.drop(columns=['COMMIT_DATE', 'SQALE_INDEX'])
 
     # Hypertune the DLT model
-    best_model, best_config, name = hypertune_dlt_model(
+    best_model, best_config = hypertune_dlt_model(
         training_df=training_df, 
         y_train=y_train, 
         x_train=x_train, 
@@ -102,8 +92,6 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
         seasonality=seasonality
     )
 
-     # Ensure COMMIT_DATE is included in the DataFrame used for prediction along with important features
-    test_df_for_prediction = testing_df[['COMMIT_DATE']].copy()  # Ensure COMMIT_DATE is present
 
     # Use the best model for final predictions
     predicted_df = best_model.predict(df=testing_df)
@@ -147,9 +135,7 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
     else:
         results_df.to_csv(csv_output_path, mode='a', index=False, header=False)
 
-
     print(f"Results for {project_name} saved in {base_path}")
-    print(f"Important features saved in {features_output_path}")
     return result_data
 
 
