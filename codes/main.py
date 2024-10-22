@@ -13,9 +13,8 @@ from bayesian_prediction_orbit_ETS import bayesian_orbit_ets
 from bayesian_pybats_dglm import bayesian_dglm
 from bayesian_prediction_pybsts import bayesian_pybsts
 from bayesian_prediction_orbit_KTR import bayesian_orbit_ktr
-#from bayesian_prediction_pymc import bayesian_pymc
+from bayesian_prediction_pymc import bayesian_pymc
 from bayesian_prediction_pyDLM import bayesian_pyDLM
-from change_point_detection_pyDLM import bayesian_change_point_detection_pyDLM
 from bayesian_change_point_detection_online import bayesian_change_point_detection
 
 
@@ -40,7 +39,6 @@ def main():
         bayesian_pyDLM()
     if CHANGEPOINT:
         bayesian_change_point_detection()
-        #bayesian_change_point_detection_pyDLM()
 
 
 
