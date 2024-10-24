@@ -1,4 +1,4 @@
-#  *"Technical Debt Prediction and Simulation"*
+#  *"Technical Debt Prediction and changepoint detection using Bayesian Analysis"*
 
 This package contains all the Python code to conduct the data preprocessing and Bayesian analysis using different modesl which is used in our study 'Technical debt prediction using Bayesian Analysis'.
 
@@ -10,7 +10,7 @@ This package contains all the Python code to conduct the data preprocessing and 
 
 Running the code requires Python3.9. See installation instructions [here](https://www.python.org/downloads/).
 You might also want to consider using [virtual env](https://packaging.python.org/guides/installing-using-pip-and-virtualenv/).
-Ensure you have the following tools installed and configured on your system:
+Ensure you have the following packages installed and configured on your system:
 ## Orbit-ML
 **Orbit-ML** is a library for Bayesian time series forecasting and inference.
 Install from PyPi:
@@ -86,6 +86,7 @@ The folder `../codes/` should contain the following files:
 ```bayesian_pybats_dglm.py```
 ```bayesian_prediction_pybsts.py```
 ```bayesian_prediction_pyDLM.py```
+```bayesian_change_point_detection_online.py```
 ```preprocessing.py```
 ```tsDataPreparation.py```
 
@@ -118,21 +119,25 @@ described in the paper.
 
 ### Stage 2: ```Orbit-ML DLT```
 
-- Executes script ```bayesian_prediction_orbit_DLT.py``` for executing bayesian Analysis with DLT model for biweekly, monthly and complete dataset:
+- Executes script ```bayesian_prediction_orbit_DLT.py``` for executing bayesian Analysis with DLT model for biweekly, monthly and complete dataset.
 
 ### Stage 3: ```Orbit-ML ETS```
 
-- Executes script ```bayesian_prediction_orbit_ETS.py```  for executing bayesian Analysis with ETS model for biweekly, monthly and complete dataset:
+- Executes script ```bayesian_prediction_orbit_ETS.py```  for executing bayesian Analysis with ETS model for biweekly, monthly and complete dataset.
 
 ### Stage 4: ```PyBats DGLM```
 
-- Executes script ```bayesian_pybats_dglm.py``` for executing bayesian Analysis with DGLM model for biweekly, monthly and complete dataset:
+- Executes script ```bayesian_pybats_dglm.py``` for executing bayesian Analysis with DGLM model for biweekly, monthly and complete dataset.
 
 ### Stage 5: ```pyBSTS DLM```
 
-- Executes script ```rbayesian_prediction_pybsts.p``` for executing bayesian Analysis with pyBSTS DLM model for biweekly, monthly and complete dataset:
+- Executes script ```rbayesian_prediction_pybsts.p``` for executing bayesian Analysis with pyBSTS DLM model for biweekly, monthly and complete dataset.
 
 ### Stage 5: ```pyDLM DLM```
 
-- Executes script ```bayesian_prediction_pyDLM.py``` for executing bayesian Analysis with pyDLM DLM model for biweekly, monthly and complete dataset:
+- Executes script ```bayesian_prediction_pyDLM.py``` for executing bayesian Analysis with pyDLM DLM model for biweekly, monthly and complete dataset.
+
+### Stage 5: ```Changepoint detection```
+
+- Executes script ```bayesian_change_point_detection_online.py``` for executing bayesian online changepoint detection for biweekly, monthly and complete dataset.
 
