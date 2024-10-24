@@ -1,18 +1,27 @@
 #  *"Technical Debt Prediction and Simulation"*
 
-This package contains all the Python code to conduct the data collection, preprocessing and analysis of this study.
+This package contains all the Python code to conduct the data preprocessing and Bayesian analysis using different modesl which is used in our study 'Technical debt prediction using Bayesian Analysis'.
 
-## Getting started
+## Overview
 
-These instructions will get you a copy of the project up and running on your local machine.
+ This package focuses on technical debt prediction through Bayesian analysis, examining how different models and estimators can effectively forecast technical debt in software projects. The primary objective of this research is to assess the reliability and effectiveness of various Bayesian models in predicting technical debt, drawing on historical data from the Technical Debt Dataset. By investigating the application of these models across different project datasets, this study aims to offer developers and project managers predictive tools for better decision-making in managing software quality. 
 
 ### Prerequisites
 
 Running the code requires Python3.9. See installation instructions [here](https://www.python.org/downloads/).
-The dependencies needed to run the code are all listed in the file `requirements.txt`. They can be installed using pip:
-```pip install -r requirements.txt```
-
 You might also want to consider using [virtual env](https://packaging.python.org/guides/installing-using-pip-and-virtualenv/).
+Ensure you have the following tools installed and configured on your system:
+## Orbit-ML
+**Orbit-ML** is a library for Bayesian time series forecasting and inference. Install it using:
+
+```bash
+pip install orbit-ml
+
+##PyBats
+PyBATS (Python for Bayesian Time Series) is used for dynamic modeling of time series data. Install it using:
+pip install pybats
+
+
 
 ## Structure of the replication package
 
@@ -25,15 +34,14 @@ The folder `../codes/` should contain the following files:
 ```commons.py```
 ```main.py```
 ```modules.py```
-```ts_simulation.py```
-```related_work_speed.py```
-```result_combiner.py```
-```ts_simulation_future.py```
+```bayesian_prediction_orbit_DLT.oy```
+```bayesian_prediction_orbit_ETS.py```
+```bayesian_prediction_pybsts.py```
+```bayesian_prediction_pyDLM.py```
 ```ts_simulation_chunks.py```
 ```ts_simulation_regressor_combination.py```
-```ts_modelling.py```
-```ts_modelling_speed.py```
-```visualization.py```
+```bayesian_prediction_pymc.py```
+```bayesian_pybats_dglm.py```
 ```preprocessing.py```
 ```tsDataPreparation.py```
 
