@@ -12,8 +12,7 @@ from bayesian_prediction_orbit_DLT import bayesian_orbit_DLT
 from bayesian_prediction_orbit_ETS import bayesian_orbit_ets
 from bayesian_pybats_dglm import bayesian_dglm
 from bayesian_prediction_pybsts import bayesian_pybsts
-from bayesian_prediction_orbit_KTR import bayesian_orbit_ktr
-from bayesian_prediction_pymc import bayesian_pymc
+#from bayesian_prediction_pymc import bayesian_pymc
 from bayesian_prediction_pyDLM import bayesian_pyDLM
 from bayesian_change_point_detection_online import bayesian_change_point_detection
 
@@ -25,14 +24,13 @@ def main():
 
     # Preprocess the data and generate the clean tables for analysis with biweekly, monthly and complete data
     if PREPROCESSING:
-        #preprocessing()
+        preprocessing()
         data_prepare()
     if DGLM:
         bayesian_dglm()
     if ORBIT:
         bayesian_orbit_DLT()
-        #bayesian_orbit_ets()
-        #bayesian_orbit_ktr()
+        bayesian_orbit_ets()
     if PYBSTS:
         bayesian_pybsts()
     if PYDLM:
