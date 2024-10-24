@@ -12,7 +12,6 @@ from bayesian_prediction_orbit_DLT import bayesian_orbit_DLT
 from bayesian_prediction_orbit_ETS import bayesian_orbit_ets
 from bayesian_pybats_dglm import bayesian_dglm
 from bayesian_prediction_pybsts import bayesian_pybsts
-#from bayesian_prediction_pymc import bayesian_pymc
 from bayesian_prediction_pyDLM import bayesian_pyDLM
 from bayesian_change_point_detection_online import bayesian_change_point_detection
 
