@@ -13,9 +13,17 @@ You might also want to consider using [virtual env](https://packaging.python.org
 Ensure you have the following tools installed and configured on your system:
 ## Orbit-ML
 **Orbit-ML** is a library for Bayesian time series forecasting and inference. Install it using:
-
+Install from PyPi:
 ```bash
-pip install orbit-ml
+pip install orbit-ml```
+
+Install from Github:
+```bash
+git clone https://github.com/uber/orbit.git
+cd orbit
+pip install -r requirements.txt
+pip install .
+```
 
 ##PyBats
 PyBATS (Python for Bayesian Time Series) is used for dynamic modeling of time series data. Install it using:
