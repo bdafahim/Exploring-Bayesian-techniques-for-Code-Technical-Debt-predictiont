@@ -12,23 +12,62 @@ Running the code requires Python3.9. See installation instructions [here](https:
 You might also want to consider using [virtual env](https://packaging.python.org/guides/installing-using-pip-and-virtualenv/).
 Ensure you have the following tools installed and configured on your system:
 ## Orbit-ML
-**Orbit-ML** is a library for Bayesian time series forecasting and inference. Install it using:
-```bash
+**Orbit-ML** is a library for Bayesian time series forecasting and inference.
 Install from PyPi:
+```bash
 pip install orbit-ml
+```
 
 Install from Github:
 
+```bash
 git clone https://github.com/uber/orbit.git
 cd orbit
 pip install -r requirements.txt
 pip install .
 ```
 
-##PyBats
-PyBATS (Python for Bayesian Time Series) is used for dynamic modeling of time series data. Install it using:
-pip install pybats
+## PyBats
+PyBATS (Python for Bayesian Time Series) is used for dynamic modeling of time series data.
 
+PyBATS is hosted on PyPI and can be installed with pip:
+
+```bash
+pip install pybats
+```
+Install from Github
+
+```bash
+git clone https://github.com/uber/orbit.git
+cd orbit
+pip install -r requirements.tx
+```
+
+## pyDLM
+pyDLM (Dynamic Linear Models with Bayesian Inference) is useful for Bayesian time series analysis with dynamic linear models.
+
+You can  get the package from PyPI:
+
+```bash
+pip install pydlm
+```
+
+You can also get the latest from github:
+
+```bash
+git clone git@github.com:wwrechard/pydlm.git pydlm
+cd pydlm
+sudo python setup.py install
+```
+
+## pyBSTS
+pyBSTS is a Python implementation of Bayesian Structural Time Series (BSTS) models.
+
+You can  get the package from PyPI:
+
+```bash
+pip install pybst
+```
 
 
 ## Structure of the replication package
@@ -42,14 +81,11 @@ The folder `../codes/` should contain the following files:
 ```commons.py```
 ```main.py```
 ```modules.py```
-```bayesian_prediction_orbit_DLT.oy```
+```bayesian_prediction_orbit_DLT.py```
 ```bayesian_prediction_orbit_ETS.py```
+```bayesian_pybats_dglm.py```
 ```bayesian_prediction_pybsts.py```
 ```bayesian_prediction_pyDLM.py```
-```ts_simulation_chunks.py```
-```ts_simulation_regressor_combination.py```
-```bayesian_prediction_pymc.py```
-```bayesian_pybats_dglm.py```
 ```preprocessing.py```
 ```tsDataPreparation.py```
 
@@ -69,10 +105,9 @@ The folder `../data/` should contain the following files:
 NOTE 1: Please, find the `DATA_PATH` global variable in the `commons.py` script and define the path where the program should create all the needed results.
 
 NOTE 2: The different stages of the study execution are splitted in the ```main.py``` script, from the boolean definitions in
-```commons.py``` practitioners can decide which stages want to be manipulated or re-executed again without affecting the other stages.
+```commons.py``` practitioners can decide which stages want to be manipulated or re-executed again without affecting the other stages. Single or multiple models can be run depending on boolean variable in commons.py.
 For a complete execution, set all the boolean global variables to ```True```
 
-Note 3: Python files ```ml_modelling.py```, ```related_work.py``` and ```ts_modelling.py``` execute the same logic behind the implemented python files but instead of using the built-in in functions to execute backward variable selection and parameter-tuning, they perform it hard-coded, therefore consider longer run times if you consider using them.
 
 ### Stage 1: ```PREPROCESSING```
 
@@ -81,29 +116,23 @@ Note 3: Python files ```ml_modelling.py```, ```related_work.py``` and ```ts_mode
 ```biweekly```, ```monthly``` and ```complete``` format by first performing data cleaning and preprocessing using the techniques
 described in the paper.
 
-### Stage 2: ```SARIMAX```
+### Stage 2: ```Orbit-ML DLT```
 
-- Executes script ```ts_modelling_speed.py``` for executing the multivariate Time Series Analysis approach proposed:
-  - ```seasonality=True```: Addresses the seasonality effect within the data through SARIMAX
-  - ```seasonality=False```: Does not address the seasonality effect and implements just ARIMAX.
+- Executes script ```bayesian_prediction_orbit_DLT.py``` for executing bayesian Analysis with DLT model for biweekly, monthly and complete dataset:
 
-### Stage 3: ```RELATED_WORK```
+### Stage 3: ```Orbit-ML ETS```
 
-- Executes script ```related_work_speed.py``` for executing the multivariate Time Series Analysis provided from the related work:
-  - ```seasonality=True```: Addresses the seasonality effect within the data by implementing univariate SARIMA+LM.
-  - ```seasonality=False```: Does not address the seasonality effect and implements just ARIMAX+LM.
+- Executes script ```bayesian_prediction_orbit_ETS.py```  for executing bayesian Analysis with ETS model for biweekly, monthly and complete dataset:
 
-### Stage 4: ```ML_MODELS```
+### Stage 4: ```PyBats DGLM```
 
-- Executes script ```ml_modelling_backward.py``` for executing the considered ML models with backward variable selection procedure.
+- Executes script ```bayesian_pybats_dglm.py``` for executing bayesian Analysis with DGLM model for biweekly, monthly and complete dataset:
 
-### Stage 5: ```COMBINE_RESULTS```
+### Stage 5: ```pyBSTS DLM```
 
-- Executes script ```result_combiner.py``` for combining the performance results from all the resulting projects.
-  - Generates the final results from all the models by collecting their average results. The ```csv``` as well as ```LaTex``` tables can be found in ```../data/final_results/```.
+- Executes script ```rbayesian_prediction_pybsts.p``` for executing bayesian Analysis with pyBSTS DLM model for biweekly, monthly and complete dataset:
 
-### Stage 6: ```Visualization of the results```
+### Stage 5: ```pyDLM DLM```
 
-- For the sake of flexibility, multiple visualization options apart from the ones displayed in the paper can be obtained by running all the cells existing in the Jupyter Notebook ```visualization.ipynb```.
-
+- Executes script ```bayesian_prediction_pyDLM.py``` for executing bayesian Analysis with pyDLM DLM model for biweekly, monthly and complete dataset:
 
