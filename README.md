@@ -1,6 +1,6 @@
 #  *"Technical Debt Prediction and changepoint detection using Bayesian Analysis"*
 
-This package contains all the Python code to conduct the data preprocessing and Bayesian analysis using different modesl which is used in our study 'Technical debt prediction using Bayesian Analysis'.
+This package contains all the Python code to conduct the data preprocessing and Bayesian analysis using different modesl which is used in our study 'Technical debt prediction and changepoint detection using Bayesian Analysis'.
 
 ## Overview
 
