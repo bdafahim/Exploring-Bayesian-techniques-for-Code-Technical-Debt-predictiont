@@ -18,50 +18,6 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-# Function to perform Lasso Regression for feature selection
-def select_features_with_lasso(X, y, alpha=0.01):
-    # Standardize the features (important for Lasso)
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    
-    # Lasso Regression for feature selection
-    lasso = Lasso(alpha=alpha)
-    lasso.fit(X_scaled, y)
-    
-    # Select features with non-zero coefficients
-    selected_features = np.where(lasso.coef_ != 0)[0]
-    important_features = X.columns[selected_features]
-    
-    print(f"Selected Features: {important_features.tolist()}")
-    
-    return important_features, 'L1'
-
-# Bayesian Model Averaging (BMA) for Feature Selection
-def select_features_with_bma(X, y, num_features=None):
-    # Bayesian Ridge as a proxy for BMA-like behavior
-    model = BayesianRidge()
-    
-    # Fit the model
-    model.fit(X, y)
-    
-    # Extract feature coefficients (weights)
-    coefficients = np.abs(model.coef_)
-    
-    # Sort features by their absolute coefficient values (important for selection)
-    feature_importance = np.argsort(-coefficients)
-    
-    # Select top 'num_features' based on coefficients, or all non-zero coefficients if num_features is not provided
-    if num_features is not None:
-        selected_indices = feature_importance[:num_features]
-    else:
-        selected_indices = feature_importance[coefficients > 0]
-    
-    # Select the feature names
-    selected_features = X.columns[selected_indices]
-    
-    print(f"Selected Features using BMA: {selected_features.tolist()}")
-    
-    return selected_features, 'BMA'
 
 def bayes_forecast(iv, dv, periodicity, project_name):
     if iv is None:
@@ -178,18 +134,8 @@ def trigger_prediction(df_path, project_name, periodicity):
         x_train = training_df.drop(columns=['SQALE_INDEX'])
         y_test = testing_df['SQALE_INDEX'].values
         x_test = testing_df.drop(columns=['SQALE_INDEX'])
-        x_train_scaled = x_train.map(np.log1p)
-
         x_train = x_train.loc[:, (x_train != 0).any(axis=0)]
         x_train.replace(0, 1, inplace=True)
-
-        # Perform feature selection using BMA
-        #important_features, name = select_features_with_bma(x_train, y_train)
-
-        # Perform feature selection using Lasso
-        important_features, name = select_features_with_lasso(x_train, y_train)
-
-        best_regressors = important_features.tolist()
 
         # Running multivariate forecast
         mv_mod, mv_for, mv_samp, mv_y = bayes_forecast(x_train, training_df['SQALE_INDEX'], periodicity, project_name)
