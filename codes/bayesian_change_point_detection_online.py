@@ -14,6 +14,7 @@ from itertools import islice
 import scipy.stats as ss
 from abc import ABC, abstractmethod
 import json
+from scipy.stats import anderson
 
 
 
@@ -37,6 +38,12 @@ class BaseLikelihood(ABC):
     def update_theta(self, data: np.array, **kwargs):
         raise NotImplementedError("Update theta is not defined. Please define in derived class.")
 
+# Apply Anderson-Darling Test for Normality
+def check_normality(data, column_name):
+    result = anderson(data)
+    print(f"AD test statistic for {column_name}: {result.statistic}")
+    print("Critical values:", result.critical_values)
+    print("Significance levels:", result.significance_level)
 # Main method to trigger the change point detection process
 def trigger_changepoint_detection(df_path, project_name, periodicity=None):
     try:
@@ -46,9 +53,26 @@ def trigger_changepoint_detection(df_path, project_name, periodicity=None):
         df.set_index('COMMIT_DATE', inplace=True)
         df = df.dropna()
 
+        # Check normality on original data
+        print(f"Normality Check on Original Data ({project_name}):")
+        check_normality(df['SQALE_INDEX'].dropna(), 'SQALE_INDEX')
+        for feature in df.columns.drop('SQALE_INDEX'):
+            check_normality(df[feature].dropna(), feature)
+        
+        # Log Transformation
+        df_transformed = df.apply(lambda x: np.log1p(x) if (x > 0).all() else x)
+
+        # Re-check normality after log transformation
+        print(f"\nNormality Check on Log-Transformed Data ({project_name}):")
+        check_normality(df_transformed['SQALE_INDEX'].dropna(), 'SQALE_INDEX (Log Transformed)')
+        for feature in df_transformed.columns.drop('SQALE_INDEX'):
+            check_normality(df_transformed[feature].dropna(), feature)
+
+        return
+
         # Get dependent variables (features) and the target variable (SQALE_INDEX)
-        features = df.drop(columns=["SQALE_INDEX"])
-        target = df["SQALE_INDEX"].values
+        features = df_transformed.drop(columns=["SQALE_INDEX"])
+        target = df_transformed["SQALE_INDEX"].values
 
         # Instantiate the Bayesian Change Point detection model using Multivariate T distribution
         detector = MultivariateT(dims=features.shape[1])
