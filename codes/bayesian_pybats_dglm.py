@@ -10,9 +10,7 @@ import logging
 from pybats.analysis import analysis
 from pybats.point_forecast import median
 from modules import MAPE, RMSE, MAE, MSE
-from sklearn.linear_model import BayesianRidge
-from sklearn.linear_model import Lasso
-from sklearn.preprocessing import StandardScaler
+
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -134,14 +132,8 @@ def trigger_prediction(df_path, project_name, periodicity):
         x_train = training_df.drop(columns=['SQALE_INDEX'])
         y_test = testing_df['SQALE_INDEX'].values
         x_test = testing_df.drop(columns=['SQALE_INDEX'])
-        x_train = x_train.loc[:, (x_train != 0).any(axis=0)]
-        x_train.replace(0, 1, inplace=True)
 
-        # Running multivariate forecast
-        mv_mod, mv_for, mv_samp, mv_y = bayes_forecast(x_train, training_df['SQALE_INDEX'], periodicity, project_name)
-
-        # Running univariate forecast
-        #mv_mod, mv_for, mv_samp, mv_y = bayes_forecast(None, training_df['SQALE_INDEX'], periodicity, project_name)
+        mv_mod, mv_for, mv_samp, mv_y = bayes_forecast(None, training_df['SQALE_INDEX'], periodicity, project_name)
 
 
         return mv_for

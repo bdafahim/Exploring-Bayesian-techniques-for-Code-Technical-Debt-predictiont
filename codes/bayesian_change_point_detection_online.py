@@ -180,7 +180,7 @@ class MultivariateT(BaseLikelihood):
         self.kappa = np.concatenate([self.kappa[:1], self.kappa + 1])
 
 
-# Example function call
+# function call
 def bayesian_change_point_detection():
     biweekly_data_path = os.path.join(DATA_PATH, "biweekly_data")
     monthly_data_path = os.path.join(DATA_PATH, "monthly_data")

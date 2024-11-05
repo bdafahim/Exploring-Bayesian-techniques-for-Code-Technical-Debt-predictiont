@@ -11,7 +11,6 @@ import json
 # Define the hypertuning function for DLT model
 def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seasonality):
 
-    # Define the hyperparameter grid (without penalties)
     trend_options = ['linear', 'loglinear']
     estimators = ['stan-map', 'stan-mcmc']
 
@@ -139,7 +138,7 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
     return result_data
 
 
-# Example function call
+# function call
 def bayesian_orbit_DLT():
     biweekly_data_path = os.path.join(DATA_PATH, "biweekly_data")
     monthly_data_path = os.path.join(DATA_PATH, "monthly_data")

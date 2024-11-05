@@ -1,7 +1,6 @@
 """
-This project executes a series of TSA techniques as well as ML models
+This file executes various bayesian models and a changepoint detection in Technical debt dataset
 
-NOTE: The data collection and preprocessing has been already performed.
 """
 
 import os
