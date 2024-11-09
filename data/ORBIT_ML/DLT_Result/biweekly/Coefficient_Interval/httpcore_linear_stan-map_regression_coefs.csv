@@ -1,0 +1,16 @@
+regressor,regressor_sign,coefficient
+S1213,Regular,0.0240888
+RedundantThrowsDeclarationCheck,Regular,0.115711
+S00117,Regular,-0.00937115
+S00122,Regular,0.0766334
+S1488,Regular,0.0163802
+S1905,Regular,0.0126745
+UselessImportCheck,Regular,0.0920176
+DuplicatedBlocks,Regular,0.432674
+S1226,Regular,-0.0742761
+S00112,Regular,0.539302
+S1155,Regular,-0.0102358
+S00108,Regular,0.270005
+S1151,Regular,0.033768
+S1132,Regular,0.149788
+S1481,Regular,0.244478

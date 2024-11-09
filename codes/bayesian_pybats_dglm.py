@@ -62,8 +62,9 @@ def bayes_forecast(iv, dv, periodicity, project_name):
         forecast = median(samples)
         credible_interval = 95
         alpha = (100 - credible_interval) / 2
-        upper = np.percentile(samples, [100 - alpha], axis=0).reshape(-1)
-        lower = np.percentile(samples, [alpha], axis=0).reshape(-1)
+        upper = np.percentile(samples, 100 - alpha, axis=0).reshape(-1)
+        lower = np.percentile(samples, alpha, axis=0).reshape(-1)
+
 
         # Define index for the last 20% of the data
         test_start = int(len(y) * 0.8)
@@ -73,6 +74,24 @@ def bayes_forecast(iv, dv, periodicity, project_name):
         mape_value = round(MAPE(y[forecast_start:], forecast), 2)
         mse = round(MSE(y[forecast_start:], forecast), 2)
         rmse = round(RMSE(y[forecast_start:], forecast), 2)
+
+        # Plot and save the forecast
+        fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+        ax = plot_data_forecast(fig, ax, y[forecast_start:forecast_end + k], forecast, samples,
+                                dates=np.arange(forecast_start, forecast_end + 1, dtype='int'))
+        ax.set_xlabel('Time')
+        ax.set_ylabel('SQALE Index')
+        ax.legend(['Forecast', 'Actual', '95% Credible Interval'])
+        ax.set_title(f'Forecast for {project_name} ({periodicity})')
+
+        # Define the path to save the plot
+        plot_path = os.path.join(DATA_PATH, 'PYBATS_DGLM', periodicity, 'Plots')
+        os.makedirs(plot_path, exist_ok=True)
+        plot_output_path = os.path.join(plot_path,f"{project_name}_forecast.png")
+        plt.savefig(plot_output_path)
+        plt.close(fig)  # Close the figure to save memory
+
+        print(f"Forecast plot saved at {plot_path}")
     except Exception as e:
         logger.error(f"Error during forecasting for {project_name}: {str(e)}")
 
@@ -93,7 +112,7 @@ def bayes_forecast(iv, dv, periodicity, project_name):
     }
 
     # Output path to save the results
-    base_path = os.path.join(DATA_PATH, 'PYBATS_DGLM', periodicity)
+    base_path = os.path.join(DATA_PATH, 'PYBATS_DGLM', periodicity, 'Results')
     os.makedirs(base_path, exist_ok=True)
     csv_output_path = os.path.join(base_path, "assessment.csv")
 
@@ -105,6 +124,22 @@ def bayes_forecast(iv, dv, periodicity, project_name):
         results_df.to_csv(csv_output_path, mode='a', index=False, header=False)
 
     print(f"Results for {project_name} saved in {base_path}")
+
+    # Save the upper and lower confidence intervals
+    interval_path = os.path.join(DATA_PATH, 'PYBATS_DGLM', periodicity, 'Confidence Intervals')
+    os.makedirs(interval_path, exist_ok=True)
+    interval_output_path = os.path.join(interval_path, f"{project_name}_confidence_interval.csv")
+        
+    # Create a DataFrame for the confidence intervals
+    interval_df = pd.DataFrame({
+        'Index': np.arange(forecast_start, forecast_end + 1),
+        'Lower': lower,
+        'Upper': upper
+    })
+
+    # Save intervals to CSV
+    interval_df.to_csv(interval_output_path, index=False)
+    print(f"Confidence intervals saved at {interval_output_path}")
 
     return mod, forecast, samples, y
 
