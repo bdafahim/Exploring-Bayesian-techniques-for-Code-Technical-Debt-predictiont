@@ -1,0 +1,4 @@
+Project,Model,Estimator,MAE,MAPE,RMSE,MSE
+bcel,ETS,stan-map,1589.41,2.86,1926.46,3711265.34
+httpcore,ETS,stan-map,2971.79,3.93,4323.06,18688853.82
+archiva,ETS,stan-map,14359.07,14.65,21164.83,447949863.44
