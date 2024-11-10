@@ -14,8 +14,8 @@ matplotlib.use('Agg')  # Use the 'Agg' backend for non-GUI environments
 
 
 # Function to save results for each estimator
-def save_results(result_data, training_df, predicted_df, periodicity, project_name, estimator):
-    base_path = os.path.join(DATA_PATH, 'ORBIT_ML', 'ETS_Result', periodicity, 'Results')
+def save_results(result_data, training_df, predicted_df,lower_bounds,upper_bounds, periodicity, project_name, estimator):
+    base_path = os.path.join(DATA_PATH,'ORBIT_ML_ETS_Result', periodicity, 'Results')
     os.makedirs(base_path, exist_ok=True)
     csv_output_path = os.path.join(base_path, f"{estimator}_assessment.csv")
 
@@ -28,7 +28,7 @@ def save_results(result_data, training_df, predicted_df, periodicity, project_na
     print(f"Results for {project_name} with estimator {estimator} saved in {base_path}")
 
     # Define path for saving plot
-    plot_path = os.path.join(DATA_PATH, 'ORBIT_ML', 'ETS_Result', periodicity, 'Plots')
+    plot_path = os.path.join(DATA_PATH, 'ORBIT_ML_ETS_Result', periodicity, 'Plots')
     os.makedirs(plot_path, exist_ok=True)
 
     response_col='SQALE_INDEX'
@@ -44,6 +44,24 @@ def save_results(result_data, training_df, predicted_df, periodicity, project_na
     plot_output_path = os.path.join(plot_path, plot_file_name)
     fig.savefig(plot_output_path)
     print(f"Plot saved at {plot_output_path}")
+
+    # Save the confidence intervals to CSV
+    interval_path = os.path.join(DATA_PATH, 'ORBIT_ML_ETS_Result', periodicity, 'Confidence Intervals')
+    os.makedirs(interval_path, exist_ok=True)
+    interval_output_path = os.path.join(interval_path, f"{project_name}_{estimator}_confidence_interval.csv")
+
+    # Create a DataFrame for the confidence intervals
+    forecast_len = len(predicted_df)  # Length of the forecasted data
+    split_point = len(training_df)    # Starting index for the forecasted data
+    interval_df = pd.DataFrame({
+        'Index': np.arange(split_point, split_point + forecast_len),
+        'Lower': np.round(lower_bounds, 2),
+        'Upper': np.round(upper_bounds, 2)
+    })
+
+    # Save intervals to CSV
+    interval_df.to_csv(interval_output_path, index=False)
+    print(f"Confidence intervals saved at {interval_output_path}")
 
 # Define the function for ETS model training and evaluation
 def evaluate_ets_model(training_df, testing_df, seasonality, project_name, periodicity):
@@ -77,6 +95,8 @@ def evaluate_ets_model(training_df, testing_df, seasonality, project_name, perio
         model.fit(df=training_df)
         predicted_df = model.predict(df=testing_df)
         predicted = predicted_df['prediction'].values
+        lower_bounds = predicted_df['prediction_5'].values
+        upper_bounds = predicted_df['prediction_95'].values
 
         metrics = {
             'MAE': round(MAE(predicted, y_test), 2),
@@ -91,7 +111,7 @@ def evaluate_ets_model(training_df, testing_df, seasonality, project_name, perio
             'Estimator': estimator,
             **metrics
         }
-        save_results(result_data,training_df, predicted_df, periodicity, project_name, estimator)
+        save_results(result_data,training_df, predicted_df,lower_bounds,upper_bounds, periodicity, project_name, estimator)
 
 # Main method to trigger predictions for all datasets
 def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None):
