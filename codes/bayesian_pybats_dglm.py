@@ -62,8 +62,8 @@ def bayes_forecast(iv, dv, periodicity, project_name):
         forecast = median(samples)
         credible_interval = 95
         alpha = (100 - credible_interval) / 2
-        upper = np.percentile(samples, 100 - alpha, axis=0).reshape(-1)
-        lower = np.percentile(samples, alpha, axis=0).reshape(-1)
+        upper = np.round(np.percentile(samples, 100 - alpha, axis=0).reshape(-1), 2)
+        lower = np.round(np.percentile(samples, alpha, axis=0).reshape(-1), 2)
 
 
         # Define index for the last 20% of the data

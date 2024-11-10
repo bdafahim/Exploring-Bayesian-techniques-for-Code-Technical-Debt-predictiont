@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import logging
 from modules import MAPE, RMSE, MAE, MSE
 from pydlm import dlm, trend, seasonality, dynamic
-from sklearn.preprocessing import StandardScaler
+from scipy.stats import norm
 
 
 
@@ -42,11 +42,6 @@ def trigger_prediction(df_path, project_name, periodicity):
         y_test = testing_df['SQALE_INDEX'].values
         x_test = testing_df.drop(columns=['SQALE_INDEX']).values
 
-        # Scaling the exogenous variables
-        '''scaler = StandardScaler()
-        x_train = scaler.fit_transform(x_train)
-        x_test = scaler.transform(x_test)'''
-
         # Convert x_train and x_test to a list of lists format as required by pyDLM
         x_train = x_train.tolist()
         x_test = x_test.tolist()
@@ -73,7 +68,24 @@ def trigger_prediction(df_path, project_name, periodicity):
 
         # Forecast for the next steps (same length as the testing data)
         forecast_len = len(y_test)
+        training_length = len(y_train)  # End of the training data
         (predicted_mean, predicted_var) = dlm_model.predictN(forecast_len, featureDict=featureDict)
+
+        # Plotting and saving the results
+        plt.figure(figsize=(10, 6))
+        #dlm_model.plotPredictN(date=100, N=50)
+        dlm_model.turnOff('filtered plot')
+        dlm_model.turnOff('smoothed plot')
+        dlm_model.plot()  # Plot the fitted and forecasted data
+    
+
+        # Save the plot
+        plot_path = os.path.join(DATA_PATH, 'pyDLM', periodicity, 'Plots')
+        os.makedirs(plot_path, exist_ok=True)
+        plt.savefig(os.path.join(plot_path, f"{project_name}_forecast.png"))
+        plt.close()  # Close the plot to avoid display overlap in loops
+
+        
 
         # Evaluate the model's performance using the provided metrics
         mae = round(MAE(y_test, predicted_mean), 2)
@@ -96,7 +108,7 @@ def trigger_prediction(df_path, project_name, periodicity):
             'MSE': mse
         }
 
-        base_path = os.path.join(DATA_PATH, 'pyDLM', f'results_{periodicity}.csv')
+        base_path = os.path.join(DATA_PATH, 'pyDLM', periodicity, 'Results')
         os.makedirs(base_path, exist_ok=True)
         csv_output_path = os.path.join(base_path, "assessment.csv")
 
@@ -108,6 +120,26 @@ def trigger_prediction(df_path, project_name, periodicity):
             results_df.to_csv(csv_output_path, mode='a', index=False, header=False)
 
         print(f"Results for {project_name} saved in {base_path}")
+
+        # Calculate 95% confidence intervals
+        z_score = norm.ppf(0.975)  # for 95% confidence
+        lower_bounds = np.round(predicted_mean - z_score * np.sqrt(predicted_var), 2)
+        upper_bounds = np.round(predicted_mean + z_score * np.sqrt(predicted_var), 2)
+
+        # Save the confidence intervals to CSV
+        interval_path = os.path.join(DATA_PATH, 'pyDLM', periodicity, 'Confidence Intervals')
+        os.makedirs(interval_path, exist_ok=True)
+        interval_output_path = os.path.join(interval_path, f"{project_name}_confidence_interval.csv")
+        # Create a DataFrame for the confidence intervals
+        interval_df = pd.DataFrame({
+            'Index': np.arange(split_point, split_point + forecast_len),
+            'Lower': lower_bounds,
+            'Upper': upper_bounds
+        })
+
+        # Save intervals to CSV
+        interval_df.to_csv(interval_output_path, index=False)
+        print(f"Confidence intervals saved at {interval_output_path}")
         
 
     except Exception as e:

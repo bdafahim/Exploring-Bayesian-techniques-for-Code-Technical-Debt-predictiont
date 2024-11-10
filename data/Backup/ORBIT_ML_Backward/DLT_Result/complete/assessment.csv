@@ -1,4 +1,0 @@
-Project,Model,Trend,Estimator,MAE,MAPE,RMSE,MSE
-bcel,DLT,logistic,stan-map,1283.07,2.3,1708.13,2917694.02
-httpcore,DLT,linear,stan-mcmc,2287.03,2.88,3565.46,12712477.68
-archiva,DLT,linear,stan-mcmc,15969.79,14.17,18649.95,347820457.62
