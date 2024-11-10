@@ -135,6 +135,7 @@ def trigger_prediction(df_path, project_name, periodicity):
             'Index': np.arange(split_point, split_point + forecast_len),
             'Lower': lower_bounds,
             'Upper': upper_bounds
+            
         })
 
         # Save intervals to CSV

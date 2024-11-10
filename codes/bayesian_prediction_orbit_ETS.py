@@ -128,7 +128,7 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
 
 # function call
 def bayesian_orbit_ets():
-    biweekly_data_path = os.path.join(DATA_PATH, "biweekly_data_1")
+    biweekly_data_path = os.path.join(DATA_PATH, "biweekly_data")
     monthly_data_path = os.path.join(DATA_PATH, "monthly_data")
     complete_data_path = os.path.join(DATA_PATH, "complete_data")
 
@@ -150,7 +150,7 @@ def bayesian_orbit_ets():
         )
 
     # Process monthly data
-    '''for monthly_file in monthly_files:
+    for monthly_file in monthly_files:
         if monthly_file == '.DS_Store':
             continue
         project = monthly_file[:-4]
@@ -173,4 +173,4 @@ def bayesian_orbit_ets():
             project_name=project,
             periodicity="complete",
             seasonality=None
-        )'''
+        )

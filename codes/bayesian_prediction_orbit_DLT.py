@@ -21,8 +21,8 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
     os.makedirs(base_path, exist_ok=True)
     plot_path = os.path.join(DATA_PATH, 'ORBIT_ML_DLT_Result', periodicity, 'Plots')
     os.makedirs(plot_path, exist_ok=True)
-    coefficient_interval_path = os.path.join(DATA_PATH, 'ORBIT_ML_DLT_Result', periodicity, 'Coefficient_Interval')
-    os.makedirs(coefficient_interval_path, exist_ok=True)
+    # = os.path.join(DATA_PATH, 'ORBIT_ML_DLT_Result', periodicity, 'Coefficient_Interval')
+    #os.makedirs(coefficient_interval_path, exist_ok=True)
     interval_path = os.path.join(DATA_PATH, 'ORBIT_ML_DLT_Result', periodicity, 'Confidence Intervals')
     os.makedirs(interval_path, exist_ok=True)
     
@@ -191,7 +191,7 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
 
 # function call
 def bayesian_orbit_DLT():
-    biweekly_data_path = os.path.join(DATA_PATH, "biweekly_data_1")
+    biweekly_data_path = os.path.join(DATA_PATH, "biweekly_data")
     monthly_data_path = os.path.join(DATA_PATH, "monthly_data")
     complete_data_path = os.path.join(DATA_PATH, "complete_data")
 
@@ -213,7 +213,7 @@ def bayesian_orbit_DLT():
         )
 
     # Process monthly data
-    '''for monthly_file in monthly_files:
+    for monthly_file in monthly_files:
         if monthly_file == '.DS_Store':
             continue
         project = monthly_file[:-4]
@@ -236,4 +236,4 @@ def bayesian_orbit_DLT():
             project_name=project,
             periodicity="complete",
             seasonality=None
-        )'''
+        )
