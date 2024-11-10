@@ -14,7 +14,7 @@ matplotlib.use('Agg')  # Use the 'Agg' backend for non-GUI environments
 
 
 # Function to save results for each estimator
-def save_results(result_data, training_df, predicted_df,lower_bounds,upper_bounds, periodicity, project_name, estimator):
+def save_results(result_data, training_df, predicted_df,lower_bounds,upper_bounds, periodicity, project_name, estimator, y_test, predicted):
     base_path = os.path.join(DATA_PATH,'ORBIT_ML_ETS_Result', periodicity, 'Results')
     os.makedirs(base_path, exist_ok=True)
     csv_output_path = os.path.join(base_path, f"{estimator}_assessment.csv")
@@ -56,7 +56,9 @@ def save_results(result_data, training_df, predicted_df,lower_bounds,upper_bound
     interval_df = pd.DataFrame({
         'Index': np.arange(split_point, split_point + forecast_len),
         'Lower': np.round(lower_bounds, 2),
-        'Upper': np.round(upper_bounds, 2)
+        'Upper': np.round(upper_bounds, 2),
+        'Predicted': np.round(predicted, 2),
+        'Actual':  np.round(y_test, 2)
     })
 
     # Save intervals to CSV
@@ -111,7 +113,7 @@ def evaluate_ets_model(training_df, testing_df, seasonality, project_name, perio
             'Estimator': estimator,
             **metrics
         }
-        save_results(result_data,training_df, predicted_df,lower_bounds,upper_bounds, periodicity, project_name, estimator)
+        save_results(result_data,training_df, predicted_df,lower_bounds,upper_bounds, periodicity, project_name, estimator, y_test, predicted)
 
 # Main method to trigger predictions for all datasets
 def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None):

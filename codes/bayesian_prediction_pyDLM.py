@@ -80,7 +80,7 @@ def trigger_prediction(df_path, project_name, periodicity):
     
 
         # Save the plot
-        plot_path = os.path.join(DATA_PATH, 'pyDLM', periodicity, 'Plots')
+        plot_path = os.path.join(DATA_PATH, 'PyDLM_Results', periodicity, 'Plots')
         os.makedirs(plot_path, exist_ok=True)
         plt.savefig(os.path.join(plot_path, f"{project_name}_forecast.png"))
         plt.close()  # Close the plot to avoid display overlap in loops
@@ -108,7 +108,7 @@ def trigger_prediction(df_path, project_name, periodicity):
             'MSE': mse
         }
 
-        base_path = os.path.join(DATA_PATH, 'pyDLM', periodicity, 'Results')
+        base_path = os.path.join(DATA_PATH, 'PyDLM_Results', periodicity, 'Results')
         os.makedirs(base_path, exist_ok=True)
         csv_output_path = os.path.join(base_path, "assessment.csv")
 
@@ -127,15 +127,16 @@ def trigger_prediction(df_path, project_name, periodicity):
         upper_bounds = np.round(predicted_mean + z_score * np.sqrt(predicted_var), 2)
 
         # Save the confidence intervals to CSV
-        interval_path = os.path.join(DATA_PATH, 'pyDLM', periodicity, 'Confidence Intervals')
+        interval_path = os.path.join(DATA_PATH, 'PyDLM_Results', periodicity, 'Confidence Intervals')
         os.makedirs(interval_path, exist_ok=True)
         interval_output_path = os.path.join(interval_path, f"{project_name}_confidence_interval.csv")
         # Create a DataFrame for the confidence intervals
         interval_df = pd.DataFrame({
             'Index': np.arange(split_point, split_point + forecast_len),
             'Lower': lower_bounds,
-            'Upper': upper_bounds
-            
+            'Upper': upper_bounds,
+            'Predicted': np.round(predicted_mean, 2),
+            'Actual': np.round(y_test, 2)
         })
 
         # Save intervals to CSV

@@ -136,7 +136,9 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
             interval_df = pd.DataFrame({
                 'Index': np.arange(split_point, split_point + forecast_len),
                 'Lower': np.round(lower_bounds, 2),
-                'Upper': np.round(upper_bounds, 2)
+                'Upper': np.round(upper_bounds, 2),
+                'Predicted': np.round(predicted, 2),
+                'Actual':  np.round(y_test, 2)
             })
 
             # Save intervals to CSV

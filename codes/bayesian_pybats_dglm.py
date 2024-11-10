@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 
-def bayes_forecast(iv, dv, periodicity, project_name):
+def bayes_forecast(iv, dv, periodicity, project_name, y_test):
     if iv is None:
         x = None
     else:
@@ -68,6 +68,8 @@ def bayes_forecast(iv, dv, periodicity, project_name):
 
         # Define index for the last 20% of the data
         test_start = int(len(y) * 0.8)
+        # Get the last 20% of the data
+        y_test = y[test_start:]
 
         # Error metrics are calculated for the forecast period
         mae = round(MAE(y[forecast_start:], forecast), 2)
@@ -85,7 +87,7 @@ def bayes_forecast(iv, dv, periodicity, project_name):
         ax.set_title(f'Forecast for {project_name} ({periodicity})')
 
         # Define the path to save the plot
-        plot_path = os.path.join(DATA_PATH, 'PYBATS_DGLM', periodicity, 'Plots')
+        plot_path = os.path.join(DATA_PATH, 'PYBATS_DGLM_Results', periodicity, 'Plots')
         os.makedirs(plot_path, exist_ok=True)
         plot_output_path = os.path.join(plot_path,f"{project_name}_forecast.png")
         plt.savefig(plot_output_path)
@@ -112,7 +114,7 @@ def bayes_forecast(iv, dv, periodicity, project_name):
     }
 
     # Output path to save the results
-    base_path = os.path.join(DATA_PATH, 'PYBATS_DGLM', periodicity, 'Results')
+    base_path = os.path.join(DATA_PATH, 'PYBATS_DGLM_Results', periodicity, 'Results')
     os.makedirs(base_path, exist_ok=True)
     csv_output_path = os.path.join(base_path, "assessment.csv")
 
@@ -126,7 +128,7 @@ def bayes_forecast(iv, dv, periodicity, project_name):
     print(f"Results for {project_name} saved in {base_path}")
 
     # Save the upper and lower confidence intervals
-    interval_path = os.path.join(DATA_PATH, 'PYBATS_DGLM', periodicity, 'Confidence Intervals')
+    interval_path = os.path.join(DATA_PATH, 'PYBATS_DGLM_Results', periodicity, 'Confidence Intervals')
     os.makedirs(interval_path, exist_ok=True)
     interval_output_path = os.path.join(interval_path, f"{project_name}_confidence_interval.csv")
         
@@ -134,7 +136,9 @@ def bayes_forecast(iv, dv, periodicity, project_name):
     interval_df = pd.DataFrame({
         'Index': np.arange(forecast_start, forecast_end + 1),
         'Lower': lower,
-        'Upper': upper
+        'Upper': upper,
+        'Predicted': np.round(np.ravel(forecast), 2),
+        'Actual': np.round(np.ravel(y_test), 2)
     })
 
     # Save intervals to CSV
@@ -168,7 +172,7 @@ def trigger_prediction(df_path, project_name, periodicity):
         y_test = testing_df['SQALE_INDEX'].values
         x_test = testing_df.drop(columns=['SQALE_INDEX'])
 
-        mv_mod, mv_for, mv_samp, mv_y = bayes_forecast(None, training_df['SQALE_INDEX'], periodicity, project_name)
+        mv_mod, mv_for, mv_samp, mv_y = bayes_forecast(None, training_df['SQALE_INDEX'], periodicity, project_name, y_test)
 
 
         return mv_for
