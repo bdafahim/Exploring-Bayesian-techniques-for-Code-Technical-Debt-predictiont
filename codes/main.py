@@ -27,8 +27,8 @@ def main():
     if DGLM:
         bayesian_dglm()
     if ORBIT:
-        #bayesian_orbit_DLT()
-        bayesian_orbit_ets()
+        bayesian_orbit_DLT()
+        #bayesian_orbit_ets()
     if PYBSTS:
         bayesian_pybsts()
     if PYDLM:

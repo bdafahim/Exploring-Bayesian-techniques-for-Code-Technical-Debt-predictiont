@@ -17,12 +17,14 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
     estimators = ['stan-map', 'stan-mcmc']
 
     # Output path to save the results
-    base_path = os.path.join(DATA_PATH, f"ORBIT_ML", 'DLT_Result', periodicity, 'Results')
+    base_path = os.path.join(DATA_PATH, 'ORBIT_ML_DLT_Result', periodicity, 'Results')
     os.makedirs(base_path, exist_ok=True)
-    plot_path = os.path.join(DATA_PATH, f"ORBIT_ML", 'DLT_Result', periodicity, 'Plots')
+    plot_path = os.path.join(DATA_PATH, 'ORBIT_ML_DLT_Result', periodicity, 'Plots')
     os.makedirs(plot_path, exist_ok=True)
-    coefficient_interval_path = os.path.join(DATA_PATH, f"ORBIT_ML", 'DLT_Result', periodicity, 'Coefficient_Interval')
+    coefficient_interval_path = os.path.join(DATA_PATH, 'ORBIT_ML_DLT_Result', periodicity, 'Coefficient_Interval')
     os.makedirs(coefficient_interval_path, exist_ok=True)
+    interval_path = os.path.join(DATA_PATH, 'ORBIT_ML_DLT_Result', periodicity, 'Confidence Intervals')
+    os.makedirs(interval_path, exist_ok=True)
     
 
     # Iterate over each combination of trend and estimator
@@ -51,6 +53,8 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
             # Predict and calculate error metrics
             predicted_df = model.predict(df=testing_df)
             predicted = predicted_df['prediction'].values
+            lower_bounds = predicted_df['prediction_5'].values
+            upper_bounds = predicted_df['prediction_95'].values
 
             # Plot the results and save the plot
             ax = plot_predicted_data(training_df, predicted_df, date_col, response_col,  title=f'DLT plot for {project_name}_{trend}_{estimator}')
@@ -63,14 +67,14 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
             fig.savefig(plot_output_path)
             print(f"Plot saved at {plot_output_path}")
 
-            # Get regression coefficients with confidence intervals
+            '''# Get regression coefficients with confidence intervals
             coef_df = model.get_regression_coefs()
             # Define the file path for saving regression coefficients
             coef_file_name = f"{project_name}_{trend}_{estimator}_regression_coefs.csv"
             coef_csv_output_path = os.path.join(coefficient_interval_path, coef_file_name)
 
             # Save regression coefficients to CSV
-            coef_df.to_csv(coef_csv_output_path, index=False)
+            coef_df.to_csv(coef_csv_output_path, index=False)'''
 
 
             mae = round(MAE(predicted, y_test), 2)
@@ -113,7 +117,7 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
             results.append(result_data)
 
             # Save each result in a separate CSV file based on trend and estimator
-            file_name = f"{trend}_{estimator}_results.csv"
+            file_name = f"{trend}_{estimator}_assesment.csv"
             csv_output_path = os.path.join(base_path, file_name)
             # Save the result as a single-row DataFrame to the specific CSV file
             result_df = pd.DataFrame(results)
@@ -123,6 +127,21 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
                 result_df.to_csv(csv_output_path, mode='a', index=False, header=False)
 
             print(f"Results for trend={trend}, estimator={estimator} saved in {csv_output_path}")
+
+            forecast_len = len(predicted_df)  # Length of the forecasted data
+            split_point = len(training_df)    # Starting index for the forecasted data
+
+            # Create and save the confidence intervals DataFrame
+            interval_output_path = os.path.join(interval_path, f"{project_name}_{trend}_{estimator}_confidence_intervals.csv")
+            interval_df = pd.DataFrame({
+                'Index': np.arange(split_point, split_point + forecast_len),
+                'Lower': np.round(lower_bounds, 2),
+                'Upper': np.round(upper_bounds, 2)
+            })
+
+            # Save intervals to CSV
+            interval_df.to_csv(interval_output_path, index=False)
+            print(f"Confidence intervals saved at {interval_output_path}")
 
     
     # Save all results to a CSV file
