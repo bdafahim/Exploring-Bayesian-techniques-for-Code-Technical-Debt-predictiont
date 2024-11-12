@@ -12,7 +12,7 @@ import matplotlib
 matplotlib.use('Agg')  # Use the 'Agg' backend for non-GUI environments
 
 # Define the hypertuning function for DLT model
-def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seasonality, project_name, periodicity):
+def evaluate_dlt_model(training_df, y_train, x_train, y_test, testing_df, seasonality, project_name, periodicity):
     trend_options = ['linear', 'loglinear']
     estimators = ['stan-map', 'stan-mcmc']
 
@@ -211,7 +211,7 @@ def trigger_prediction(df_path, project_name, periodicity=None, seasonality=None
     y_test = testing_df['SQALE_INDEX'].values
 
     # Run hypertuning to get results for all combinations
-    results = hypertune_dlt_model(
+    results = evaluate_dlt_model(
         training_df=training_df, 
         y_train=y_train, 
         x_train=x_train, 
