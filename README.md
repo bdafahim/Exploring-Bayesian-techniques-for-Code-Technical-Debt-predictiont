@@ -1,17 +1,17 @@
-#  *"Technical Debt Prediction and changepoint detection using Bayesian Analysis"*
+#  *"Exploring Bayesian techniques for Code Technical Debt predictiont"*
 
-This package contains all the Python code to conduct the data preprocessing and Bayesian analysis using different modesl which is used in our study 'Technical debt prediction using Bayesian Analysis'.
+This package contains all the Python code to conduct the data preprocessing and Bayesian analysis using different modesl which is used in our study 'Technical debt prediction and changepoint detection using Bayesian Analysis'.
 
 ## Overview
 
- This package focuses on technical debt prediction through Bayesian analysis, examining how different models and estimators can effectively forecast technical debt in software projects. The primary objective of this research is to assess the reliability and effectiveness of various Bayesian models in predicting technical debt, drawing on historical data from the Technical Debt Dataset. By investigating the application of these models across different project datasets, this study aims to offer developers and project managers predictive tools for better decision-making in managing software quality. 
+This package focuses on technical debt prediction through Bayesian analysis, examining how different models and estimators can effectively forecast technical debt in software projects.The primary objective of this research is to assess the reliability and effectiveness of various Bayesian models in predicting technical debt, drawing on historical data from the Technical Debt Dataset. By investigating the application of these models across different project datasets, this study aims to offer developers and project managers predictive tools for better decision-making in managing software quality. 
 
-### Prerequisites
+## Prerequisites
 
 Running the code requires Python3.9. See installation instructions [here](https://www.python.org/downloads/).
 You might also want to consider using [virtual env](https://packaging.python.org/guides/installing-using-pip-and-virtualenv/).
 Ensure you have the following packages installed and configured on your system:
-## Orbit-ML
+### Orbit-ML
 **Orbit-ML** is a library for Bayesian time series forecasting and inference.
 Install from PyPi:
 ```bash
@@ -27,7 +27,7 @@ pip install -r requirements.txt
 pip install .
 ```
 
-## PyBats
+### PyBats
 PyBATS (Python for Bayesian Time Series) is used for dynamic modeling of time series data.
 
 PyBATS is hosted on PyPI and can be installed with pip:
@@ -43,7 +43,7 @@ cd orbit
 pip install -r requirements.tx
 ```
 
-## pyDLM
+### pyDLM
 pyDLM (Dynamic Linear Models with Bayesian Inference) is useful for Bayesian time series analysis with dynamic linear models.
 
 You can  get the package from PyPI:
@@ -60,7 +60,7 @@ cd pydlm
 sudo python setup.py install
 ```
 
-## pyBSTS
+### pyBSTS
 pyBSTS is a Python implementation of Bayesian Structural Time Series (BSTS) models.
 
 You can  get the package from PyPI:
@@ -70,7 +70,7 @@ pip install pybst
 ```
 
 
-## Structure of the replication package
+### Structure of the replication package
 
 The replication package provides two different directories. The first one provides the codes for running the study and the second one
 provides the initial data files obtained from the dataset specified in the paper.
@@ -84,18 +84,17 @@ The folder `../codes/` should contain the following files:
 ```bayesian_prediction_orbit_DLT.py```
 ```bayesian_prediction_orbit_ETS.py```
 ```bayesian_pybats_dglm.py```
-```bayesian_prediction_pybsts.py```
 ```bayesian_prediction_pyDLM.py```
-```bayesian_change_point_detection_online.py```
 ```preprocessing.py```
 ```tsDataPreparation.py```
 
 ### Data
-The folder `../data/` should contain the following files:
+The folder `../data/` ¨ contain the following files:
 ```biweekly_data/```
 ```monthly_data/```
 ```complete_data/```
 ```raw-data/```
+```Bayesian Analysis Results/```
 
 
 
@@ -119,25 +118,19 @@ described in the paper.
 
 ### Stage 2: ```Orbit-ML DLT```
 
-- Executes script ```bayesian_prediction_orbit_DLT.py``` for executing bayesian Analysis with DLT model for biweekly, monthly and complete dataset.
+- Executes script ```bayesian_prediction_orbit_DLT.py``` for executing bayesian Analysis with Damped Local Trend(DLT) Model for biweekly, monthly and complete dataset.
 
 ### Stage 3: ```Orbit-ML ETS```
 
-- Executes script ```bayesian_prediction_orbit_ETS.py```  for executing bayesian Analysis with ETS model for biweekly, monthly and complete dataset.
+- Executes script ```bayesian_prediction_orbit_ETS.py```  for executing bayesian Analysis with Exponential Smoothing(ETS) Model for biweekly, monthly and complete dataset.
 
 ### Stage 4: ```PyBats DGLM```
 
-- Executes script ```bayesian_pybats_dglm.py``` for executing bayesian Analysis with DGLM model for biweekly, monthly and complete dataset.
+- Executes script ```bayesian_pybats_dglm.py``` for executing bayesian Analysis with Dynamic Generalized Linear Model(DGLM) for biweekly, monthly and complete dataset.
 
-### Stage 5: ```pyBSTS DLM```
-
-- Executes script ```rbayesian_prediction_pybsts.p``` for executing bayesian Analysis with pyBSTS DLM model for biweekly, monthly and complete dataset.
 
 ### Stage 5: ```pyDLM DLM```
 
-- Executes script ```bayesian_prediction_pyDLM.py``` for executing bayesian Analysis with pyDLM DLM model for biweekly, monthly and complete dataset.
+- Executes script ```bayesian_prediction_pyDLM.py``` for executing bayesian Analysis with pyDLM Dynamic Linear Model(DLM) for biweekly, monthly and complete dataset.
 
-### Stage 5: ```Changepoint detection```
-
-- Executes script ```bayesian_change_point_detection_online.py``` for executing bayesian online changepoint detection for biweekly, monthly and complete dataset.
 
