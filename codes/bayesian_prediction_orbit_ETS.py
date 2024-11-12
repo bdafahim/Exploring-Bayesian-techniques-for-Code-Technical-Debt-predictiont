@@ -40,10 +40,41 @@ def save_results(result_data, training_df, predicted_df,lower_bounds,upper_bound
     plt.close(fig)
     
     # Save the plot image
-    plot_file_name = f"{project_name}_{estimator}_plot.png"
+    plot_file_name = f"{project_name}_{estimator}_plot.pdf"
     plot_output_path = os.path.join(plot_path, plot_file_name)
     fig.savefig(plot_output_path)
     print(f"Plot saved at {plot_output_path}")
+
+    # Define path for saving decomposition plot
+    plot_path_d = os.path.join(DATA_PATH, 'Decomposition Plot', 'ETS', periodicity)
+    os.makedirs(plot_path_d, exist_ok=True)
+    axes_d = plot_predicted_components(predicted_df, date_col,
+                                    plot_components=['prediction', 'trend', 'seasonality'])
+    # Create a new figure for the combined plot with 3 subplots in a single row
+    fig, axs = plt.subplots(3, 1, figsize=(12, 15))
+
+    # Plot each component on a separate subplot in the combined figure
+    for i, ax in enumerate(axs):
+        # Extract data from the original plot and re-plot on the new axis
+        for line in axes_d[i].lines:  # Transfer line objects
+            ax.plot(line.get_xdata(), line.get_ydata(), label=line.get_label())
+        if i == 0:
+            ax.set_title("SQALE INDEX")  # Rename 'prediction' to 'SQALE INDEX'
+        else:
+            ax.set_title(axes_d[i].get_title())
+        ax.set_xlabel(axes_d[i].get_xlabel())
+        ax.set_ylabel(axes_d[i].get_ylabel())
+        ax.legend()  # Show legend if any
+    
+    # Close the original figure to prevent display issues
+    plt.close(axes_d[0].get_figure())
+
+            
+    # Save the plot image
+    plot_file_name_d = f"{project_name}_{estimator}_plot.pdf"
+    plot_output_path_d = os.path.join(plot_path_d, plot_file_name_d)
+    fig.savefig(plot_output_path_d)
+    print(f"Plot saved at {plot_output_path_d}")
 
     # Save the confidence intervals to CSV
     interval_path = os.path.join(DATA_PATH, 'ORBIT_ML_ETS_Result', periodicity, 'Confidence Intervals')
@@ -89,13 +120,13 @@ def evaluate_ets_model(training_df, testing_df, seasonality, project_name, perio
             date_col='COMMIT_DATE',
             estimator=estimator,
             seed=8888,
-            num_warmup=400,
+            num_warmup=1000,
             num_sample=1000,
         )
 
         
         model.fit(df=training_df)
-        predicted_df = model.predict(df=testing_df)
+        predicted_df = model.predict(df=testing_df, decompose=True)
         predicted = predicted_df['prediction'].values
         lower_bounds = predicted_df['prediction_5'].values
         upper_bounds = predicted_df['prediction_95'].values

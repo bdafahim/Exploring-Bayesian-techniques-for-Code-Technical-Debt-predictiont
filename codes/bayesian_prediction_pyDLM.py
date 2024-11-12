@@ -82,7 +82,7 @@ def trigger_prediction(df_path, project_name, periodicity):
         # Save the plot
         plot_path = os.path.join(DATA_PATH, 'PyDLM_Results', periodicity, 'Plots')
         os.makedirs(plot_path, exist_ok=True)
-        plt.savefig(os.path.join(plot_path, f"{project_name}_forecast.png"))
+        plt.savefig(os.path.join(plot_path, f"{project_name}_forecast.pdf"))
         plt.close()  # Close the plot to avoid display overlap in loops
 
         

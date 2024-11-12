@@ -36,7 +36,8 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
             date_col='COMMIT_DATE'
             response_col='SQALE_INDEX'
             
-            model = DLT(
+            if(estimator=='stan-map'):
+                model = DLT(
                 seasonality=seasonality,
                 response_col='SQALE_INDEX',
                 date_col='COMMIT_DATE',
@@ -46,12 +47,24 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
                 regressor_col=x_train.columns.tolist(),
                 n_bootstrap_draws=1000
             )
+            else:
+                model = DLT(
+                seasonality=seasonality,
+                response_col='SQALE_INDEX',
+                date_col='COMMIT_DATE',
+                estimator=estimator,
+                global_trend_option=trend,
+                seed=8888,
+                regressor_col=x_train.columns.tolist(),
+                num_warmup=1000,
+                num_sample=1000,
+            )
             
             # Fit the model
             model.fit(df=training_df)
             
             # Predict and calculate error metrics
-            predicted_df = model.predict(df=testing_df)
+            predicted_df = model.predict(df=testing_df, decompose=True)
             predicted = predicted_df['prediction'].values
             lower_bounds = predicted_df['prediction_5'].values
             upper_bounds = predicted_df['prediction_95'].values
@@ -62,19 +75,40 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
             plt.close(fig)
             
             #plot = plot_predicted_data(training_df, predicted_df, date_col, response_col,  title=f'DLT plot for {project_name}_{trend}_{estimator}')
-            plot_file_name = f"{project_name}_{trend}_{estimator}_plot.png"
+            plot_file_name = f"{project_name}_{trend}_{estimator}_plot.pdf"
             plot_output_path = os.path.join(plot_path, plot_file_name)
             fig.savefig(plot_output_path)
             print(f"Plot saved at {plot_output_path}")
 
-            '''# Get regression coefficients with confidence intervals
-            coef_df = model.get_regression_coefs()
-            # Define the file path for saving regression coefficients
-            coef_file_name = f"{project_name}_{trend}_{estimator}_regression_coefs.csv"
-            coef_csv_output_path = os.path.join(coefficient_interval_path, coef_file_name)
+            # Define path for saving decomposition plot
+            plot_path_d = os.path.join(DATA_PATH, 'Decomposition Plot', 'DLT', periodicity)
+            os.makedirs(plot_path_d, exist_ok=True)
+            axes_d = plot_predicted_components(predicted_df, date_col,
+                                    plot_components=['prediction', 'trend', 'seasonality', 'regression'])
+            # Create a new figure for the combined plot with 3 subplots in a single row
+            fig, axs = plt.subplots(4, 1, figsize=(12, 16))
 
-            # Save regression coefficients to CSV
-            coef_df.to_csv(coef_csv_output_path, index=False)'''
+            # Plot each component on a separate subplot in the combined figure
+            for i, ax in enumerate(axs):
+                # Extract data from the original plot and re-plot on the new axis
+                for line in axes_d[i].lines:  # Transfer line objects
+                    ax.plot(line.get_xdata(), line.get_ydata(), label=line.get_label())
+                # Set custom title and labels
+                if i == 0:
+                    ax.set_title("SQALE INDEX")  # Rename 'prediction' to 'SQALE INDEX'
+                else:
+                    ax.set_title(axes_d[i].get_title())
+                ax.set_xlabel(axes_d[i].get_xlabel())
+                ax.set_ylabel(axes_d[i].get_ylabel())
+                ax.legend()  # Show legend if any
+            # Close the original figure to prevent display issues
+            plt.close(axes_d[0].get_figure())
+            
+            # Save the plot image
+            plot_file_name_d = f"{project_name}_{trend}_{estimator}_plot.pdf"
+            plot_output_path_d = os.path.join(plot_path_d, plot_file_name_d)
+            fig.savefig(plot_output_path_d)
+            print(f"Plot saved at {plot_output_path_d}")
 
 
             mae = round(MAE(predicted, y_test), 2)
@@ -111,9 +145,9 @@ def hypertune_dlt_model(training_df, y_train, x_train, y_test, testing_df, seaso
             }
             # Conditionally add BIC or WBIC to result_data
             if bic_value is not None:
-                result_data['BIC'] = bic_value
+                result_data['BIC'] = round(bic_value, 2)
             if wbic_value is not None:
-                result_data['WBIC'] = wbic_value
+                result_data['WBIC'] = round(wbic_value,2)
             results.append(result_data)
 
             # Save each result in a separate CSV file based on trend and estimator

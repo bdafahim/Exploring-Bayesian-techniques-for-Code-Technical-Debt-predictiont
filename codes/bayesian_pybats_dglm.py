@@ -89,7 +89,7 @@ def bayes_forecast(iv, dv, periodicity, project_name, y_test):
         # Define the path to save the plot
         plot_path = os.path.join(DATA_PATH, 'PYBATS_DGLM_Results', periodicity, 'Plots')
         os.makedirs(plot_path, exist_ok=True)
-        plot_output_path = os.path.join(plot_path,f"{project_name}_forecast.png")
+        plot_output_path = os.path.join(plot_path,f"{project_name}_forecast.pdf")
         plt.savefig(plot_output_path)
         plt.close(fig)  # Close the figure to save memory
 
@@ -172,7 +172,7 @@ def trigger_prediction(df_path, project_name, periodicity):
         y_test = testing_df['SQALE_INDEX'].values
         x_test = testing_df.drop(columns=['SQALE_INDEX'])
 
-        mv_mod, mv_for, mv_samp, mv_y = bayes_forecast(None, training_df['SQALE_INDEX'], periodicity, project_name, y_test)
+        mv_mod, mv_for, mv_samp, mv_y = bayes_forecast(None, df['SQALE_INDEX'], periodicity, project_name, y_test)
 
 
         return mv_for
