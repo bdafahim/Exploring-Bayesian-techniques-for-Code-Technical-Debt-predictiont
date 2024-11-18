@@ -44,7 +44,7 @@ def bayes_forecast(iv, dv, periodicity, project_name, y_test):
     try:
 
         # Define the model with PyBATS
-        mod, samples = analysis(Y=y, X=x, family='normal',  # Change family as per your data distribution
+        mod, samples = analysis(Y=y, X=x, family='normal',
                                 forecast_start=forecast_start,
                                 forecast_end=forecast_end,
                                 k=k,
