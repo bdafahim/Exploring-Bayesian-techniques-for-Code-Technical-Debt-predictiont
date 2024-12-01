@@ -4,7 +4,7 @@ This package contains all the Python code to conduct the data preprocessing and 
 
 ## Overview
 
-This package focuses on technical debt prediction through Bayesian analysis, examining how different models and estimators can effectively forecast technical debt in software projects.The primary objective of this research is to assess the reliability and effectiveness of various Bayesian models in predicting technical debt, drawing on historical data from the Technical Debt Dataset. By investigating the application of these models across different project datasets, this study aims to offer developers and project managers predictive tools for better decision-making in managing software quality. 
+This package focuses on technical debt prediction through Bayesian analysis, examining how different models and estimators can effectively forecast technical debt in software projects.The primary objective of this research is to assess the reliability and effectiveness of various Bayesian models in predicting Code Technical Debt(TD), drawing on historical data from the Technical Debt Dataset. By investigating the application of these models across different project datasets, this study aims to offer developers and project managers predictive tools for better decision-making in managing software quality. 
 
 ## Prerequisites
 
@@ -28,7 +28,7 @@ pip install .
 ```
 
 ### PyBats
-PyBATS (Python for Bayesian Time Series) is used for dynamic modeling of time series data.
+PyBATS is used for dynamic modeling of time series data.
 
 PyBATS is hosted on PyPI and can be installed with pip:
 
@@ -44,7 +44,7 @@ pip install -r requirements.tx
 ```
 
 ### pyDLM
-pyDLM (Dynamic Linear Models with Bayesian Inference) is useful for Bayesian time series analysis with dynamic linear models.
+pyDLM is useful for Bayesian time series analysis with dynamic linear models.
 
 You can  get the package from PyPI:
 
@@ -77,7 +77,7 @@ provides the initial data files obtained from the dataset specified in the paper
 
 ### Codes
 
-The folder `../codes/` should contain the following files:
+The folder `../codes/` contain the following files:
 ```commons.py```
 ```main.py```
 ```modules.py```
@@ -89,14 +89,16 @@ The folder `../codes/` should contain the following files:
 ```tsDataPreparation.py```
 
 ### Data
-The folder `../data/` ¨ contain the following files:
+The folder `../data/`  contain the following files:
 ```biweekly_data/```
 ```monthly_data/```
 ```complete_data/```
 ```raw-data/```
-```Bayesian Analysis Results/```
-
-
+```Decomposition Plot/```
+```ORBIT_ML_DLT_Result/```
+```ORBIT_ML_ETS_Result/```
+```PYBATS_DGLM_Results/```
+```PyDLM_Results/```
 
 
 
@@ -116,21 +118,36 @@ For a complete execution, set all the boolean global variables to ```True```
 ```biweekly```, ```monthly``` and ```complete``` format by first performing data cleaning and preprocessing using the techniques
 described in the paper.
 
-### Stage 2: ```Orbit-ML DLT```
+### Stage 2: ```Orbit-ML Damped Local Trend(DLT)```
 
-- Executes script ```bayesian_prediction_orbit_DLT.py``` for executing bayesian Analysis with Damped Local Trend(DLT) Model for biweekly, monthly and complete dataset.
+- Executes script ```bayesian_prediction_orbit_DLT.py``` for executing bayesian Analysis with DLT for biweekly, monthly and complete dataset.
 
-### Stage 3: ```Orbit-ML ETS```
+### Stage 3: ```Orbit-ML Exponential Smoothing(ETS)```
 
-- Executes script ```bayesian_prediction_orbit_ETS.py```  for executing bayesian Analysis with Exponential Smoothing(ETS) Model for biweekly, monthly and complete dataset.
+- Executes script ```bayesian_prediction_orbit_ETS.py```  for executing bayesian Analysis with ETS for  biweekly, monthly and complete dataset.
 
-### Stage 4: ```PyBats DGLM```
+### Stage 4: ```PyBats Dynamic Generalized Linear Model(DGLM)```
 
-- Executes script ```bayesian_pybats_dglm.py``` for executing bayesian Analysis with Dynamic Generalized Linear Model(DGLM) for biweekly, monthly and complete dataset.
+- Executes script ```bayesian_pybats_dglm.py``` for executing bayesian Analysis with DGLM for biweekly, monthly and complete dataset.
 
 
-### Stage 5: ```pyDLM DLM```
+### Stage 5: ```pyDLM Dynamic Linear Model(DLM)```
 
-- Executes script ```bayesian_prediction_pyDLM.py``` for executing bayesian Analysis with pyDLM Dynamic Linear Model(DLM) for biweekly, monthly and complete dataset.
+- Executes script ```bayesian_prediction_pyDLM.py``` for executing bayesian Analysis with DLM for biweekly, monthly and complete dataset.
+  
+## Results
+Results for individual model are available in the directory `../data/{model_name}_Results/Periodicity/Results`. Here {model_name}_Results can be
+```ORBIT_ML_DLT_Result/```
+```ORBIT_ML_ETS_Result/```
+```PYBATS_DGLM_Results/```
+```PyDLM_Results/```
+The Periodicity can be biweekly, monthly, or original, depending on the dataset used.
+Additionally, confidence intervals for all the models are provided in the directory `../data/{model_name}_Results/Periodicity/Confidence Intervals`
+
+## Data Visualization
+All the plots for individual models are available in the directory `../data/Result_Folder/Periodicity/Plots`. The Result_Folder  names for each model are detailed in the "Structure of the Replication Package" section. For instance, to access all plots for the Orbit-ML DLT model with biweekly data, navigate to `../data/
+ORBIT_ML_DLT_Result/biweekly/Plots`
+
+Also, we have provided decomposition plots for DLT and ETS models. Decomposition plots can be found ../data/Decomposition Plot/model/Periodicity`. where model corresponds to either DLT or ETS, and Periodicity refers to biweekly, monthly, or complete, depending on the desired plots.
 
 
