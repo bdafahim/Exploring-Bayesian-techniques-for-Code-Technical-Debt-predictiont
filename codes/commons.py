@@ -9,15 +9,6 @@ INITIAL_VARS = ['S1213', 'RedundantThrowsDeclarationCheck', 'S00117', 'S00122', 
 
 # Flag values for process control of the project
 PREPROCESSING = False
-SARIMAX = False
-SIMULATION = False
-SIMULATION_FUTURE_POINTS = False
-RELATED_WORK = False
-ML_MODELS = False
-COMBINE_RESULTS = False
 DGLM = False
 ORBIT = False
-PYBSTS = False
-PYMC = False
 PYDLM = True
-CHANGEPOINT = False
