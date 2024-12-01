@@ -60,17 +60,9 @@ cd pydlm
 sudo python setup.py install
 ```
 
-### pyBSTS
-pyBSTS is a Python implementation of Bayesian Structural Time Series (BSTS) models.
-
-You can  get the package from PyPI:
-
-```bash
-pip install pybst
-```
 
 
-### Structure of the replication package
+## Structure of the replication package
 
 The replication package provides two different directories. The first one provides the codes for running the study and the second one
 provides the initial data files obtained from the dataset specified in the paper.
@@ -99,6 +91,21 @@ The folder `../data/`  contain the following files:
 ```ORBIT_ML_ETS_Result/```
 ```PYBATS_DGLM_Results/```
 ```PyDLM_Results/```
+
+### Results
+Results for individual model are available in the directory `../data/{model_name}_Result/Periodicity/Results`. Here {model_name}_Result can be
+```ORBIT_ML_DLT_Result```,
+```ORBIT_ML_ETS_Result```,
+```PYBATS_DGLM_Results``` or
+```PyDLM_Results```
+The Periodicity can be biweekly, monthly, or original, depending on the dataset used.
+Additionally, confidence intervals for all the models are provided in the directory `../data/{model_name}_Result/Periodicity/Confidence Intervals`
+
+### Data Visualization
+All the plots for individual models are available in the directory `../data/Result_Folder/Periodicity/Plots`. The Result_Folder  names for each model are detailed above in the 'Data' section. For instance, to access all plots for the Orbit-ML DLT model with biweekly data, navigate to `../data/
+ORBIT_ML_DLT_Result/biweekly/Plots`
+
+Also, we have provided decomposition plots for DLT and ETS models. Decomposition plots can be found ../data/Decomposition Plot/model/Periodicity`. where model corresponds to either DLT or ETS, and Periodicity refers to biweekly, monthly, or complete, depending on the desired plots.
 
 
 
@@ -135,19 +142,5 @@ described in the paper.
 
 - Executes script ```bayesian_prediction_pyDLM.py``` for executing bayesian Analysis with DLM for biweekly, monthly and complete dataset.
   
-## Results
-Results for individual model are available in the directory `../data/{model_name}_Results/Periodicity/Results`. Here {model_name}_Results can be
-```ORBIT_ML_DLT_Result/```
-```ORBIT_ML_ETS_Result/```
-```PYBATS_DGLM_Results/```
-```PyDLM_Results/```
-The Periodicity can be biweekly, monthly, or original, depending on the dataset used.
-Additionally, confidence intervals for all the models are provided in the directory `../data/{model_name}_Results/Periodicity/Confidence Intervals`
-
-## Data Visualization
-All the plots for individual models are available in the directory `../data/Result_Folder/Periodicity/Plots`. The Result_Folder  names for each model are detailed in the "Structure of the Replication Package" section. For instance, to access all plots for the Orbit-ML DLT model with biweekly data, navigate to `../data/
-ORBIT_ML_DLT_Result/biweekly/Plots`
-
-Also, we have provided decomposition plots for DLT and ETS models. Decomposition plots can be found ../data/Decomposition Plot/model/Periodicity`. where model corresponds to either DLT or ETS, and Periodicity refers to biweekly, monthly, or complete, depending on the desired plots.
 
 
